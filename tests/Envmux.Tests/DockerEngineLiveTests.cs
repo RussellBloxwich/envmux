@@ -269,6 +269,9 @@ public sealed class DockerEngineLiveTests(DockerEngineFixture fixture, ITestOutp
     {
         var engine = Engine;
         var name = Name("pub");
+        // macOS does not route all of 127/8 to lo0 without explicit aliases.
+        // Publishing a port should not require changing the workstation's network.
+        var address = OperatingSystem.IsMacOS() ? "127.0.0.1" : "127.9.1.1";
 
         try
         {
@@ -277,23 +280,23 @@ public sealed class DockerEngineLiveTests(DockerEngineFixture fixture, ITestOutp
                 Image = DockerEngineFixture.Image,
                 Cmd = ["sh", "-c", "mkdir -p /www && echo published > /www/index.html && exec httpd -f -p 18080 -h /www"],
                 Labels = Labels,
-                Ports = [new PortBinding(18080, "127.9.1.1", 18080)],
+                Ports = [new PortBinding(18080, address, 18080)],
             });
 
             var clock = Stopwatch.StartNew();
             await engine.StartAsync(name);
 
             using var http = new HttpClient(new SocketsHttpHandler { UseProxy = false }) { Timeout = TimeSpan.FromSeconds(2) };
-            var answer = await UntilAsync(() => http.GetStringAsync("http://127.9.1.1:18080/"), TimeSpan.FromSeconds(20));
-            output.WriteLine($"127.9.1.1:18080 answered {clock.Elapsed.TotalMilliseconds:F0} ms after start was asked for");
+            var answer = await UntilAsync(() => http.GetStringAsync($"http://{address}:18080/"), TimeSpan.FromSeconds(20));
+            output.WriteLine($"{address}:18080 answered {clock.Elapsed.TotalMilliseconds:F0} ms after start was asked for");
             Assert.Equal("published", answer.Trim());
 
-            Assert.Equal([new PortBinding(18080, "127.9.1.1", 18080)], (await engine.InspectAsync(name))!.Ports);
+            Assert.Equal([new PortBinding(18080, address, 18080)], (await engine.InspectAsync(name))!.Ports);
 
             await engine.StopAsync(name, timeoutSeconds: 1);
 
             // Stopped, the bindings are still what it was created with.
-            Assert.Equal([new PortBinding(18080, "127.9.1.1", 18080)], (await engine.InspectAsync(name))!.Ports);
+            Assert.Equal([new PortBinding(18080, address, 18080)], (await engine.InspectAsync(name))!.Ports);
         }
         finally
         {

@@ -50,7 +50,7 @@ internal static class Program
                                    Containers extension attaches to — a session's
                                    instance, presented as a container. Runs until
                                    interrupted; --print writes what to point the
-                                   editor at and exits. Windows only so far. Clients
+                                   editor at and exits. Windows, macOS and Linux. Clients
                                    start this on demand and hold it open with a lease,
                                    so it is rarely run by hand; it closes itself once
                                    nothing needs it.

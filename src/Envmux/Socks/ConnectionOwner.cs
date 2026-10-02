@@ -28,14 +28,22 @@ namespace Envmux.Socks;
 /// and "the browser this session opened".
 /// </para>
 /// <para>
-/// Windows only, through <c>iphlpapi</c> and <c>ntdll</c>, called directly
-/// because this runs once per connection and a PowerShell per connection would
-/// be the whole page load. Elsewhere it answers "unknown" and a caller has to
-/// bring the password.
+/// Windows uses iphlpapi and ntdll; macOS asks its bundled lsof and ps tools.
+/// Other platforms answer "unknown" and a caller has to bring the password.
 /// </para>
 /// </remarks>
 internal static class ConnectionOwner
 {
+    public static Task<int?> FindAsync(IPEndPoint client, int listenerPort, CancellationToken ct) =>
+        OperatingSystem.IsMacOS()
+            ? MacConnectionOwner.FindAsync(client, listenerPort, ct)
+            : Task.FromResult(Find(client, listenerPort));
+
+    public static Task<int?> ParentAsync(int pid, CancellationToken ct) =>
+        OperatingSystem.IsMacOS()
+            ? MacConnectionOwner.ParentAsync(pid, ct)
+            : Task.FromResult(Parent(pid));
+
     /// <summary>
     /// The process holding the client end of a connection to <paramref name="listenerPort"/>
     /// from <paramref name="client"/>, or null when it cannot be told.
@@ -237,7 +245,7 @@ internal sealed class LaunchedBrowsers
     /// time it had when it was launched, so a browser that has exited cannot
     /// lend its id to whatever Windows hands the number to next.
     /// </remarks>
-    public bool Contains(int pid)
+    public async Task<bool> ContainsAsync(int pid, CancellationToken ct)
     {
         int? current = pid;
 
@@ -256,7 +264,7 @@ internal sealed class LaunchedBrowsers
                 return true;
             }
 
-            current = ConnectionOwner.Parent(p);
+            current = await ConnectionOwner.ParentAsync(p, ct).ConfigureAwait(false);
         }
 
         return false;

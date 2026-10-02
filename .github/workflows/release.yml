@@ -2,7 +2,7 @@ name: Beta release
 on:
   push:
     branches: ["release/**"]
-    tags: ["v*.*.*-beta.*"]
+    tags: ["v*.*.*-beta.*", "v*.*.*-rc.*"]
   workflow_dispatch:
 permissions:
   contents: read
@@ -155,5 +155,6 @@ jobs:
           gh release view $tag --repo '${{ github.repository }}' *> $null
           if ($LASTEXITCODE -eq 0) { throw 'Release already exists; tags and archives are immutable' }
           $files = @(Get-ChildItem artifacts/dist -File | ForEach-Object FullName)
-          gh release create $tag @files --repo '${{ github.repository }}' --verify-tag --draft --prerelease --title "envmux $version" --notes-file .github/beta-release-notes.md
+          $visibility = if ($version -match '-rc\.') { @() } else { @('--draft') }
+          gh release create $tag @files @visibility --repo '${{ github.repository }}' --verify-tag --prerelease --title "envmux $version" --notes-file .github/beta-release-notes.md
           if ($LASTEXITCODE -ne 0) { throw 'Draft release failed' }

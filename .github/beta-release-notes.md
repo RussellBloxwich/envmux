@@ -32,3 +32,7 @@ CI unit tests alone do not establish these gates.
 
 For Discord support, include versions and redacted errors. Never share portal
 token URLs, sign-in state, transcripts, or environment dumps.
+
+## macOS RC
+
+Apple Silicon native AOT release with app-bundle browser discovery, macOS SOCKS process authentication and a private Unix socket for VS Code Dev Containers. Includes platform regression tests and archive setup instructions. Git and Docker Desktop with its Linux engine running are required. macOS binaries are unsigned and unnotarized.

@@ -43,8 +43,7 @@ internal sealed record EditorConfig
     /// <para>
     /// <c>ssh</c> points VS Code at the instance's hostname over SSH instead —
     /// a Remote-SSH window, needing nothing else running. It is the fallback for
-    /// where the Docker endpoint is not available (anything but Windows, so far)
-    /// or where a plain SSH remote is simply wanted.
+    /// where a plain SSH remote is wanted.
     /// </para>
     /// </remarks>
     public string? Attach { get; init; }
@@ -53,14 +52,11 @@ internal sealed record EditorConfig
     /// Whether this is the Dev Containers attach rather than the SSH one.
     /// </summary>
     /// <remarks>
-    /// Dev Containers is the default wherever the endpoint can serve it — which
-    /// is Windows, so far. Elsewhere the default is SSH, because there is no
-    /// endpoint to attach through yet (docs/vscode-remote.md §3.1); an explicit
-    /// <c>"devcontainer"</c> still forces it and fails with a clear message. An
-    /// explicit <c>"ssh"</c> always opts out.
+    /// Dev Containers is the default on Windows and macOS, where the endpoint
+    /// has a native transport. An explicit SSH choice always opts out.
     /// </remarks>
     public bool IsDevContainer => Attach is null
-        ? OperatingSystem.IsWindows()
+        ? OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()
         : string.Equals(Attach, EditorAttach.DevContainer, StringComparison.Ordinal);
 }
 

@@ -389,7 +389,7 @@ public sealed class SocksListenerTests : IAsyncLifetime, IDisposable
     [SkippableFact]
     public async Task LetsInALaunchedProcessWithNoPassword()
     {
-        Skip.IfNot(OperatingSystem.IsWindows(), "the connection's owner is read from the Windows TCP table");
+        Skip.IfNot(OperatingSystem.IsWindows() || OperatingSystem.IsMacOS(), "process ownership requires Windows or macOS");
 
         // The test process stands in for the browser: it is the one holding the
         // client end, so registering it is what launching a browser does.

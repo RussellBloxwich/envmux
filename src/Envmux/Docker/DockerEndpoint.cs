@@ -1,3 +1,4 @@
+using Envmux.Commands;
 using ProcessStartInfo = System.Diagnostics.ProcessStartInfo;
 
 namespace Envmux.Docker;
@@ -88,15 +89,6 @@ internal static class DockerEndpoint
     /// <exception cref="ShimException">The endpoint is not available on this platform, or would not come up.</exception>
     public static async Task<DockerLease> EnsureAsync(Action<string>? report = null, CancellationToken ct = default)
     {
-        if (!OperatingSystem.IsWindows())
-        {
-            // The lease and the launch are platform-neutral, but there is no
-            // listener to launch yet (see ShimEndpoint). Fail with the same
-            // message rather than spawning a process that will exit.
-            throw new ShimException(
-                "the Docker endpoint is served on Windows only so far — docs/vscode-remote.md §3.1.");
-        }
-
         var log = report ?? (_ => { });
 
         // The lease first, so that by the time anything is serving there is
@@ -148,6 +140,13 @@ internal static class DockerEndpoint
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
             };
+            // A framework-dependent invocation runs inside dotnet, whose first
+            // argument must be this assembly rather than the subcommand.
+            if (string.Equals(Path.GetFileNameWithoutExtension(exe), "dotnet", StringComparison.OrdinalIgnoreCase))
+            {
+                info.ArgumentList.Add(Path.Combine(AppContext.BaseDirectory, "envmux.dll"));
+            }
+
             info.ArgumentList.Add("docker");
             info.ArgumentList.Add("--auto");
 
@@ -181,6 +180,6 @@ internal static class DockerEndpoint
         }
 
         throw new ShimException(
-            "the Docker endpoint did not come up. Try `envmux docker` in a terminal to see why.");
+            $"the Docker endpoint did not come up. Try `{CommandName.Current} docker` in a terminal to see why.");
     }
 }

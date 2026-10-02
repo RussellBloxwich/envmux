@@ -51,12 +51,23 @@ internal static class BrowserLaunch
 
     /// <summary>Where each browser installs itself, per machine and per user.</summary>
     /// <remarks>
-    /// Windows only, like the check that lets a launched browser in without a
-    /// password (<see cref="ConnectionOwner"/>): a browser found anywhere else
-    /// could not use the port it was pointed at.
+    /// Mac app bundles are launched through their executable so the proxy can
+    /// identify the browser process and its descendants.
     /// </remarks>
     public static IReadOnlyList<string> Candidates(BrowserKind kind)
     {
+        if (OperatingSystem.IsMacOS())
+        {
+            var relativeMac = kind switch
+            {
+                BrowserKind.Chrome => "Google Chrome.app/Contents/MacOS/Google Chrome",
+                BrowserKind.Firefox => "Firefox.app/Contents/MacOS/firefox",
+                _ => "Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
+            };
+            return [Path.Combine("/Applications", relativeMac),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Applications", relativeMac)];
+        }
+
         if (!OperatingSystem.IsWindows())
         {
             return [];
@@ -121,9 +132,9 @@ internal static class BrowserLaunch
     public static BrowserKind? KindOf(string path) =>
         Path.GetFileNameWithoutExtension(path.Replace('\\', '/')).ToLowerInvariant() switch
         {
-            "chrome" or "chromium" => BrowserKind.Chrome,
+            "chrome" or "chromium" or "google chrome" => BrowserKind.Chrome,
             "firefox" => BrowserKind.Firefox,
-            "msedge" => BrowserKind.Edge,
+            "msedge" or "microsoft edge" => BrowserKind.Edge,
             _ => null,
         };
 

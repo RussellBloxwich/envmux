@@ -649,3 +649,22 @@ SSH blocks include the selected backend in their relay command. Re-run
 `envmux ssh --backend incus` to update an older Incus block. Review `--print`
 before applying a block; a managed SSH zone can select only one backend at a time.
 Prune keeps a workspace it cannot inspect unless `--force` is explicit.
+
+## macOS release candidate
+
+Use the `osx-arm64` archive on an Apple Silicon Mac with Git and Docker Desktop's
+Linux engine running. Run `./envmux install --check`, then `./envmux install`,
+and open a new terminal. No .NET SDK is required for the native release.
+
+Install Chrome, Firefox or Edge in `/Applications` or `~/Applications` for the
+session browser. envmux launches its app-bundle executable with a separate
+profile and authenticates proxy connections using macOS `lsof` and `ps`.
+Safari is not supported. VS Code Dev Containers uses a private Unix socket;
+explicit SSH attach remains available. The macOS binary is unsigned and
+unnotarized: verify the release checksum before approving it through macOS.
+
+For a first check, run `envmux init --skills both`, `envmux config validate`,
+`envmux --dry-run`, then `envmux mac-smoke` in a Git project with a commit.
+Check that the portal opens, the session browser reaches your development task,
+and VS Code attaches. Report the command, envmux version and error text, without
+credentials, tokens or private repository contents.

@@ -242,7 +242,7 @@ internal sealed class SocksListener : IAsyncDisposable
                 return null;
             }
         }
-        else if (methods.Contains(Socks5.NoAuthentication) && IsLaunchedBrowser(client))
+        else if (methods.Contains(Socks5.NoAuthentication) && await IsLaunchedBrowserAsync(client, deadline.Token).ConfigureAwait(false))
         {
             await Socks5.SelectAsync(stream, Socks5.NoAuthentication, deadline.Token).ConfigureAwait(false);
         }
@@ -263,16 +263,16 @@ internal sealed class SocksListener : IAsyncDisposable
     }
 
     /// <summary>Whether the process on the other end is one of this session's browsers, saying so once if not.</summary>
-    private bool IsLaunchedBrowser(TcpClient client)
+    private async Task<bool> IsLaunchedBrowserAsync(TcpClient client, CancellationToken ct)
     {
         if (client.Client.RemoteEndPoint is not IPEndPoint remote ||
-            ConnectionOwner.Find(remote, Port) is not { } pid)
+            await ConnectionOwner.FindAsync(remote, Port, ct).ConfigureAwait(false) is not { } pid)
         {
             WarnOnce(0, "browser: refused a connection with no password whose process could not be identified");
             return false;
         }
 
-        if (_launched.Contains(pid))
+        if (await _launched.ContainsAsync(pid, ct).ConfigureAwait(false))
         {
             return true;
         }

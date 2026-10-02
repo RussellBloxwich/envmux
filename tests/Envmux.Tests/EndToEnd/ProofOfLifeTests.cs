@@ -200,13 +200,37 @@ public sealed class ProofOfLifeTests
             }
 
             using var process = System.Diagnostics.Process.Start(start)!;
-            var dom = process.StandardOutput.ReadToEndAsync();
             _ = process.StandardError.ReadToEndAsync();
-
             using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(60));
-            await process.WaitForExitAsync(timeout.Token);
+            try
+            {
+                // Chrome on macOS can emit its complete DOM and then hang in
+                // display-link shutdown. The rendered document is the evidence;
+                // waiting for browser exit adds an unrelated display dependency.
+                var dom = new StringBuilder();
+                var buffer = new char[4096];
+                while (!dom.ToString().Contains("</html>", StringComparison.OrdinalIgnoreCase))
+                {
+                    var read = await process.StandardOutput.ReadAsync(buffer, timeout.Token);
+                    if (read == 0)
+                    {
+                        break;
+                    }
 
-            return await dom;
+                    dom.Append(buffer, 0, read);
+                }
+
+                return dom.ToString();
+            }
+            finally
+            {
+                if (!process.HasExited)
+                {
+                    process.Kill(entireProcessTree: true);
+                }
+
+                await process.WaitForExitAsync();
+            }
         }
         finally
         {
@@ -222,15 +246,7 @@ public sealed class ProofOfLifeTests
     }
 
     private static string? Chrome() =>
-        new[]
-        {
-            Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
-            Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        }
-        .Where(root => root.Length > 0)
-        .Select(root => Path.Combine(root, "Google", "Chrome", "Application", "chrome.exe"))
-        .FirstOrDefault(File.Exists);
+        Envmux.Socks.BrowserLaunch.Candidates(Envmux.Socks.BrowserKind.Chrome).FirstOrDefault(File.Exists);
 }
 
 /// <summary>What <see cref="Targets"/> reads out of <c>ENVMUX_E2E</c>.</summary>

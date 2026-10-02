@@ -45,11 +45,8 @@ internal interface IShimListener : IAsyncDisposable
 /// pipe, per user, in message mode — the mode is not optional, see that class.
 /// </para>
 /// <para>
-/// macOS and Linux are not served yet. The shape is decided: a unix socket
-/// under <see cref="HostConfig.Directory"/> at mode 0600, where half-close is
-/// the socket's own <c>shutdown</c> and the same <see cref="IShimListener"/>
-/// contract applies. docs/vscode-remote.md §3.1 records it; nothing here
-/// pretends to it.
+/// macOS and Linux use a private unix socket. The singleton lock is held before
+/// binding, so a socket left by a crashed endpoint can be removed safely.
 /// </para>
 /// </remarks>
 internal static class ShimEndpoint
@@ -71,10 +68,8 @@ internal static class ShimEndpoint
     /// </summary>
     /// <remarks>
     /// A pipe under <c>\\.\pipe\</c> exists exactly while a server instance is
-    /// listening; a unix socket file exists once bound. Cheap, and it does not
-    /// consume a server instance the way a probe connection would — so the
-    /// editor path can check before it launches and say what to run if nothing
-    /// is up.
+    /// listening. Unix socket files survive a crash, so they need a connection
+    /// probe before the editor can trust that the endpoint is up.
     /// </remarks>
     public static bool IsServed()
     {
@@ -91,7 +86,26 @@ internal static class ShimEndpoint
             }
         }
 
-        return File.Exists(UnixSocketPath);
+        if (!File.Exists(UnixSocketPath))
+        {
+            return false;
+        }
+
+        // A crash leaves the socket file behind. Only a live listener counts.
+        try
+        {
+            using var probe = new System.Net.Sockets.Socket(
+                System.Net.Sockets.AddressFamily.Unix, System.Net.Sockets.SocketType.Stream,
+                System.Net.Sockets.ProtocolType.Unspecified);
+            using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(1));
+            probe.ConnectAsync(new System.Net.Sockets.UnixDomainSocketEndPoint(UnixSocketPath), deadline.Token)
+                .AsTask().GetAwaiter().GetResult();
+            return true;
+        }
+        catch (Exception e) when (e is System.Net.Sockets.SocketException or OperationCanceledException)
+        {
+            return false;
+        }
     }
 
     public static IShimListener Listen()
@@ -101,8 +115,6 @@ internal static class ShimEndpoint
             return new Windows.MessagePipeListener(PipeName);
         }
 
-        throw new ShimException(
-            "the Docker endpoint is served on Windows only so far. On macOS and Linux it will be a " +
-            $"unix socket at {UnixSocketPath} — docs/vscode-remote.md §3.1 has the shape; the listener is not written.");
+        return new UnixSocketListener(UnixSocketPath);
     }
 }

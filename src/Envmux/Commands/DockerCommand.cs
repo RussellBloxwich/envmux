@@ -13,7 +13,7 @@ namespace Envmux.Commands;
 /// docs/vscode-remote.md, brought inside. <c>envmux docker</c> serves the
 /// endpoint until interrupted; <c>--print</c> writes what to point the editor
 /// at and exits. The endpoint is loopback/filesystem only — a per-user pipe on
-/// Windows, a unix socket elsewhere later — because the Docker API is
+/// Windows, a private unix socket on macOS and Linux — because the Docker API is
 /// unauthenticated and this one can start execs on every target.
 /// </para>
 /// <para>

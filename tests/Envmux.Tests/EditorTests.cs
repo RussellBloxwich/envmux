@@ -315,8 +315,8 @@ public class EditorConfigTests
     public void TheDefaultAttachIsDevContainerWhereTheEndpointServes()
     {
         // Left unsaid, the attach is the Dev Containers one wherever there is an
-        // endpoint to serve it — which is Windows, so far — and SSH elsewhere.
-        Assert.Equal(OperatingSystem.IsWindows(), Plan("{}").Editor.IsDevContainer);
+        // endpoint to serve it — Windows and macOS — and SSH elsewhere.
+        Assert.Equal(OperatingSystem.IsWindows() || OperatingSystem.IsMacOS(), Plan("{}").Editor.IsDevContainer);
     }
 
     [Fact]
