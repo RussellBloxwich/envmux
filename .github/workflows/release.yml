@@ -77,7 +77,8 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: release-${{ matrix.rid }}
-          path: artifacts/releases/**/dist/*
+          path: artifacts/releases/${{ steps.version.outputs.value }}-${{ matrix.rid }}/dist/
+          compression-level: 0
           if-no-files-found: error
       - uses: actions/upload-artifact@v4
         if: always()
@@ -85,12 +86,9 @@ jobs:
           name: beta-verification-${{ matrix.rid }}
           path: artifacts/release-tests/*.trx
 
-  draft:
-    if: startsWith(github.ref, 'refs/tags/')
+  assemble:
     needs: [audit, build]
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
@@ -102,11 +100,13 @@ jobs:
         run: |
           $dist = New-Item -ItemType Directory -Path artifacts/dist
           $sums = [Collections.Generic.List[string]]::new()
+          $isTag = '${{ github.ref_type }}' -eq 'tag'
+          $version = if ($isTag) { '${{ github.ref_name }}'.Substring(1) } else { '0.1.0-beta.review.${{ github.run_id }}.${{ github.run_attempt }}' }
           $builds = @()
           foreach ($rid in @('win-x64', 'linux-x64', 'linux-arm64', 'osx-arm64')) {
             $source = "artifacts/downloaded/release-$rid"
             $extension = if ($rid -eq 'win-x64') { 'zip' } else { 'tar.gz' }
-            $name = 'envmux-${{ github.ref_name }}'.Replace('envmux-v', 'envmux-') + "-$rid.$extension"
+            $name = "envmux-$version-$rid.$extension"
             $archive = Join-Path $source $name
             if (-not (Test-Path -LiteralPath $archive)) { throw "Missing archive: $name" }
             $line = @(Get-Content (Join-Path $source 'SHA256SUMS.txt'))
@@ -115,11 +115,30 @@ jobs:
             Copy-Item -LiteralPath $archive -Destination $dist.FullName
             $sums.Add($line[0])
             $build = Get-Content (Join-Path $source 'build.json') -Raw | ConvertFrom-Json
-            if ($build.rid -ne $rid -or $build.version -ne '${{ github.ref_name }}'.Substring(1) -or $build.commit -ne '${{ github.sha }}' -or $build.dirty) { throw "Unexpected build metadata: $rid" }
+            if ($build.rid -ne $rid -or $build.version -ne $version -or $build.commit -ne '${{ github.sha }}' -or $build.dirty) { throw "Unexpected build metadata: $rid" }
             $builds += $build
           }
           [IO.File]::WriteAllText((Join-Path $dist.FullName 'SHA256SUMS.txt'), ($sums -join "`n") + "`n")
           [IO.File]::WriteAllText((Join-Path $dist.FullName 'builds.json'), ($builds | ConvertTo-Json))
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-dist
+          path: artifacts/dist/
+          compression-level: 0
+          if-no-files-found: error
+
+  draft:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: assemble
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-dist
+          path: artifacts/dist
       - name: Create draft prerelease
         shell: pwsh
         env:
