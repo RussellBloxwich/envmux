@@ -1,0 +1,61 @@
+name: Beta release
+on:
+  push:
+    tags: ["v*.*.*-beta.*"]
+permissions:
+  contents: read
+concurrency:
+  group: beta-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  draft:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Scan source and history
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force artifacts/audit-tools | Out-Null
+          $base = 'https://github.com/betterleaks/betterleaks/releases/download/v1.9.0'
+          $archive = 'betterleaks_1.9.0_windows_x64.zip'
+          Invoke-WebRequest "$base/$archive" -OutFile "artifacts/audit-tools/$archive"
+          Invoke-WebRequest "$base/checksums.txt" -OutFile artifacts/audit-tools/checksums.txt
+          $line = Get-Content artifacts/audit-tools/checksums.txt | Where-Object { $_ -match "\s+$([regex]::Escape($archive))$" }
+          if (@($line).Count -ne 1 -or (Get-FileHash "artifacts/audit-tools/$archive" -Algorithm SHA256).Hash -ne ($line -split '\s+')[0]) { throw 'Betterleaks checksum mismatch' }
+          Expand-Archive "artifacts/audit-tools/$archive" artifacts/audit-tools/scanner
+          ./scripts/secret-audit.ps1 -Betterleaks ./artifacts/audit-tools/scanner/betterleaks.exe
+      - run: dotnet build -c Release
+      - run: dotnet test -c Release --no-build --logger trx --results-directory artifacts/release-tests
+      - name: Build immutable Windows archive
+        shell: pwsh
+        run: |
+          $version = '${{ github.ref_name }}'.Substring(1)
+          ./scripts/release-build.ps1 -Version $version -Rid win-x64
+          ./scripts/release-check.ps1 -Archive "artifacts/releases/$version-win-x64/dist/envmux-$version-win-x64.zip" -Version $version
+      - uses: actions/upload-artifact@v4
+        with:
+          name: beta-verification
+          path: |
+            artifacts/release-tests/**
+            artifacts/releases/**/build.json
+      - name: Create draft prerelease
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version = '${{ github.ref_name }}'.Substring(1)
+          $tag = '${{ github.ref_name }}'
+          gh release view $tag --repo envmux/envmux *> $null
+          if ($LASTEXITCODE -eq 0) { throw 'Release already exists; tags and archives are immutable' }
+          gh release create $tag "artifacts/releases/$version-win-x64/dist/envmux-$version-win-x64.zip" "artifacts/releases/$version-win-x64/dist/SHA256SUMS.txt" --repo envmux/envmux --verify-tag --draft --prerelease --title "envmux $version" --notes-file .github/beta-release-notes.md
+          if ($LASTEXITCODE -ne 0) { throw 'Draft release failed' }
