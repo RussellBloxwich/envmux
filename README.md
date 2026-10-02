@@ -15,7 +15,13 @@ Download the Windows x64 archive and `SHA256SUMS.txt` from
 [envmux/envmux releases](https://github.com/envmux/envmux/releases). Check its
 SHA-256 with `Get-FileHash`, extract it, and run `envmux.exe` from a terminal.
 Release binaries are compiled with Native AOT, trimmed and optimized for size; using it needs neither .NET nor Node on the host.
-Docker Desktop must be running. Git must be available.
+Docker Desktop must be running. Git must be available. Each archive contains a
+`README.md` with platform-specific checks and getting-started instructions.
+In the extracted directory run `.\envmux.exe install` on Windows, or
+`./envmux install` on Unix. This copies the executable to `~/.envmux/bin`, adds
+it to your user PATH and checks Git and the Linux Docker engine. Open a new
+terminal, then check `envmux --version`. `install --check` checks prerequisites
+without writing anything; `install --no-path` leaves PATH management to you.
 
 For Linux or Apple Silicon macOS, choose the matching `.tar.gz`, verify its
 SHA-256, extract with `tar -xzf <archive>`, then run `./envmux`. Linux needs

@@ -61,10 +61,10 @@ internal static class Program
                                    run on, one step at a time: the seed, the VM,
                                    trust, and the golden instance. `envmux host`
                                    lists them.
-          install                  The same steps, asked rather than typed —
-                                   it finds the latest image, makes the switch,
-                                   suggests a free range, and waits out the
-                                   install. Run it again to resume.
+          install                  Install the native executable onto your user
+                                   PATH and check Git and the Linux Docker engine.
+                                   --check writes nothing; --no-path only copies.
+                                   --provider incus|hyperv sets up a remote host.
           init                     Write a .envmux.json that fits this repository,
                                    with the coding tools found on this host filled in.
           logs                     What a task said, read out of its instance. Tasks

@@ -1,11 +1,11 @@
 # The host
 
-Sessions run on an IncusOS virtual machine under Hyper-V — or on an Incus you
+The optional Incus backend runs sessions on an IncusOS virtual machine under Hyper-V — or on an Incus you
 already run, which has [a section of its own](#an-incus-you-already-run). You
 build it once per workstation and then mostly forget it. This page is what each
 step is doing, and why the constraints are the ones they are.
 
-**`envmux install` does all of it as a wizard**, and is what you want the first
+**`envmux install --provider hyperv` does all of it as a wizard**, and is what you want the first
 time. This page is what it is doing on your behalf, and `envmux host` is the same
 steps one at a time for when one of them needs doing differently.
 
@@ -276,7 +276,7 @@ anything else on.
 
 ## Choosing the image
 
-`envmux install` reads
+`envmux install --provider hyperv` reads
 [the published index](https://images.linuxcontainers.org/os/index.json), which
 lists every published build and every file in it, and takes the newest **stable**
 one for this machine's architecture. `--version` pins a build and `--channel
@@ -412,7 +412,7 @@ So envmux has two ways to tell, and on this image only one of them works.
 **The screen, which is a guess, and is what runs.** Two weak signals together:
 the framebuffer has not changed in twenty seconds, and the system disk has grown
 past half a gigabyte. Nothing is happening, and something happened. The guess is
-never trusted on its own — `envmux install` acts on it by detaching the media and
+never trusted on its own — `envmux install --provider hyperv` acts on it by detaching the media and
 waiting for the API, and the host answering on 8443 is the proof. If the guess
 was wrong nothing was lost, because a VM sitting unchanged for twenty seconds with
 an empty disk was not about to finish anyway.
@@ -457,7 +457,7 @@ writing to. Anything that recognised a disk by its filename silently stops
 working, and the install media becomes indistinguishable from the system disk.
 
 envmux turns them off at creation and identifies disks by controller slot rather
-than by name. For a VM created before it knew to, `envmux install` clears the
+than by name. For a VM created before it knew to, `envmux install --provider hyperv` clears the
 existing checkpoints and waits out the merge.
 
 ## The switch
@@ -467,7 +467,7 @@ address this workstation can reach its API on, and a way out to the image
 remote and to whatever the sessions install. An internal switch would give it
 neither.
 
-`envmux install` makes one if there is none, offering the physical adapters that
+`envmux install --provider hyperv` makes one if there is none, offering the physical adapters that
 are up and not already backing a switch. Creating it briefly interrupts that
 adapter while Windows rebuilds the stack around it — a second or two, and worth
 knowing about before it happens to somebody on a call.
@@ -511,7 +511,7 @@ recreating. Nothing on this workstation has to follow.
 
 All of that is about `envmux0`. An adopted network's range is not envmux's to
 move, and `envmux host range` refuses it: change the network yourself, as its
-owner, and run `envmux install` again, which reads it back.
+owner, and run `envmux install --provider incus` again, which reads it back.
 
 ## The golden instance
 

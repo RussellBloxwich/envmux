@@ -33,11 +33,11 @@ internal static class InstallCommand
         envmux install — build the host, asking as it goes.
 
         usage:
-          envmux install [options]
+          envmux install --provider incus|hyperv [options]
 
         options:
           --yes                Take every default; ask nothing
-          --provider <name>    hyperv (default, builds a VM) or incus (attach to
+          --provider <name>    hyperv (builds a VM) or incus (attach to
                                a daemon you already run). See host.md.
                                Naming the other one on a workstation that
                                already has a host swaps it to a new one.
@@ -139,6 +139,11 @@ internal static class InstallCommand
 
     public static async Task<int> RunAsync(List<string> args, CancellationToken ct = default)
     {
+        if (ProviderNamed(args) is null or "docker")
+        {
+            return await LocalInstall.RunAsync(args, ct).ConfigureAwait(false);
+        }
+
         if (args.Contains("-h") || args.Contains("--help"))
         {
             Console.WriteLine(Usage);
@@ -202,7 +207,7 @@ internal static class InstallCommand
         catch (OperationCanceledException)
         {
             Console.WriteLine();
-            Console.WriteLine("stopped. `envmux install` again picks up where this left off.");
+            Console.WriteLine($"stopped. `{CommandName.Current} install --provider {ProviderNamed(args)}` again picks up where this left off.");
             return 1;
         }
         catch (Exception e) when (e is IncusException or CertificateException or DiskImageException
@@ -211,7 +216,7 @@ internal static class InstallCommand
             Console.Error.WriteLine();
             Console.Error.WriteLine($"envmux: {e.Message}");
             Console.Error.WriteLine();
-            Console.Error.WriteLine("`envmux host status` says where this got to. `envmux install` resumes.");
+            Console.Error.WriteLine($"`{CommandName.Current} host status` says where this got to. `{CommandName.Current} install --provider {ProviderNamed(args)}` resumes.");
             return 1;
         }
     }
@@ -988,6 +993,7 @@ internal static class InstallCommand
         {
             return named.Equals(HostConfig.Incus, StringComparison.OrdinalIgnoreCase) ? HostConfig.Incus
                 : named.Equals(HostConfig.HyperV, StringComparison.OrdinalIgnoreCase) ? HostConfig.HyperV
+                : named.Equals("docker", StringComparison.OrdinalIgnoreCase) ? "docker"
                 : named;
         }
 
@@ -1724,7 +1730,7 @@ internal static class InstallCommand
             }
         }
 
-        Console.Error.WriteLine("        `envmux install` resumes from here once it is unstuck.");
+        Console.Error.WriteLine($"        `{CommandName.Current} install --provider hyperv` resumes from here once it is unstuck.");
     }
 
     /// <summary>Whether anything is listening on the API port yet.</summary>
@@ -1782,7 +1788,7 @@ internal static class InstallCommand
         {
             Console.Error.WriteLine();
             Console.Error.WriteLine(
-                "envmux: it has not answered on 8443. Give it a moment and run `envmux install` again, " +
+                $"envmux: it has not answered on 8443. Give it a moment and run `{CommandName.Current} install --provider hyperv` again, " +
                 "or pass the address yourself: `envmux host trust <address>`.");
 
             return false;

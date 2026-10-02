@@ -149,6 +149,7 @@ public class InstallIncusTests
     /// </summary>
     [Theory]
     [InlineData(new[] { "--provider", "incus" }, "incus")]
+    [InlineData(new[] { "--provider", "DOCKER" }, "docker")]
     [InlineData(new[] { "--provider", "HyperV" }, "hyperv")]
     [InlineData(new[] { "--provider", "libvirt" }, "libvirt")]
     [InlineData(new[] { "--token", "abc" }, "incus")]

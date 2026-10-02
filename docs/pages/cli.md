@@ -317,6 +317,36 @@ produced nothing does not leave one behind forever.
 
 ## `envmux install`
 
+Install the downloaded native executable into `~/.envmux/bin`, add it to your
+user PATH, and check Git and the Linux Docker engine. On Windows, run
+`.\envmux.exe install` from the extracted archive; on Unix use `./envmux install`.
+Open a new terminal, then run `envmux --version`. No administrator privileges,
+.NET or Node are needed. The release archive includes its own getting-started
+README and embedded project skills.
+
+`--check` checks prerequisites and writes nothing. `--no-path` installs the
+executable without updating PATH. Windows updates your user PATH; bash/zsh
+startup files or fish configuration are updated on Unix. Other Unix shells
+use `.profile`. `ENVMUX_HOME` overrides `~/.envmux`; only its `bin` directory
+is written. SDK builds can use `--check`, but must use the development install
+scripts rather than copying an SDK apphost. Repeated identical installations
+are safe, including running `install` from the installed executable. Close other
+envmux sessions before replacing an executable Windows has locked.
+
+After installation, in a committed repository:
+
+```console
+envmux init --skills both
+envmux config validate
+envmux first-session
+```
+
+### Optional Incus and Hyper-V hosts
+
+Use `envmux install --provider incus` to attach to an existing daemon, or
+`envmux install --provider hyperv` to build an IncusOS VM. Plain `install`
+defaults to Docker and never builds a VM.
+
 The whole host build, asked rather than typed. Ten steps on the Hyper-V path —
 six when it attaches to an Incus you already run — each of which is one of the
 `envmux host` commands below, plus the parts that are tedious by hand: it
@@ -332,7 +362,7 @@ already run needs no elevation at all: nothing on this workstation is wired.
 | Option | What it does |
 |---|---|
 | `--yes`, `-y` | Take every default; ask nothing |
-| `--provider <name>` | `hyperv` (default, builds a VM) or `incus` (attach to a daemon you already run). Any of `--api`, `--token` or `--network` implies `incus`, and nothing is asked. A name it does not know is refused |
+| `--provider <name>` | `docker` (default, install the executable), `hyperv` (build a VM) or `incus` (attach to a daemon you already run). Any of `--api`, `--token` or `--network` implies `incus`, and nothing is asked. A name it does not know is refused |
 | `--api <host[:port]>` | (incus) The daemon's address, instead of being asked. No port means 8443, and the address it prints says so. `https://host[:port]` is accepted and any path ignored; `http://` is refused. Optional with `--token`, which lists the addresses itself; given beside one, a certificate that is not the token's is refused with no question |
 | `--token <token>` | (incus) A trust token, from `envmux host prepare` or `incus config trust add envmux`. It also carries the daemon's addresses and fingerprint, so it makes `--api` optional, and the certificate it names is pinned without asking. It can be pasted at the address prompt instead. Expired, it is refused with how to mint another; unreadable, it is sent as it is when `--api` is given. Never printed. Only redeemed when the daemon does not already trust this client |
 | `--network <name>` | (incus) Adopt a managed bridge the daemon already has instead of creating `envmux0`. Its range, its DHCP ranges **and its `dns.domain`** are read from it — unset means the zone is `incus`. It is never written to and never deleted. A name that does not exist is refused, and so is a network sessions could not live on |

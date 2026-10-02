@@ -11,6 +11,11 @@ Use `tar -xzf <archive>` on Unix to preserve executable permissions. Run
 with the portal embedded; host .NET and Node are not needed. builds.json records
 the source commit, native compilation, binary/archive sizes and build tools for all four archives.
 
+Each archive includes README.md with installation and first-session instructions.
+From the extracted directory, run `.\envmux.exe install` on Windows or
+`./envmux install` on Unix, then open a new terminal. This checks Git/Docker,
+installs to `~/.envmux/bin` and configures your user PATH.
+
 In a committed git repository, run `envmux init --skills both`, edit and validate
 `.envmux.json`, then `envmux first-session`. Press b for the session browser,
 p for the portal, e for VS Code (Dev Containers extension), and c for a shell.

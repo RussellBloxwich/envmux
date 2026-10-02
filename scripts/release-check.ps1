@@ -69,6 +69,14 @@ elseif ($archivePath.EndsWith('.tar.gz', [StringComparison]::Ordinal)) {
     $binary = Join-Path $extract 'envmux'
 }
 else { throw 'Expected a .zip or .tar.gz release archive' }
+$readmePath = Join-Path $extract 'README.md'
+if (-not (Test-Path -LiteralPath $readmePath)) { throw 'Archive contains no getting-started README' }
+$readme = Get-Content -LiteralPath $readmePath -Raw
+if ($readme.Contains('@@', [StringComparison]::Ordinal) -or -not $readme.Contains("# envmux $Version", [StringComparison]::Ordinal)) {
+    throw 'Archive README has an incorrect version or unexpanded placeholders'
+}
+& $binary install --help | Out-Null
+if ($LASTEXITCODE -ne 0) { throw 'Extracted binary failed install help' }
 $answer = & $binary --version
 if ($LASTEXITCODE -ne 0 -or ($answer.Trim() -ne $Version -and $answer.Trim() -ne "envmux $Version")) {
     throw 'Extracted binary does not report the requested version'

@@ -46,6 +46,9 @@ try {
     # beta is the standalone executable and the explicit product assets only.
     Copy-Item -LiteralPath (Join-Path $published $binaryName) -Destination $stage
     Copy-Item -LiteralPath (Join-Path $root 'LICENSE') -Destination $stage
+    $extension = if ($Rid.StartsWith('win-', [StringComparison]::Ordinal)) { 'zip' } else { 'tar.gz' }
+    $readme = [IO.File]::ReadAllText((Join-Path $PSScriptRoot 'release-readme.md')).Replace('@@VERSION@@', $Version).Replace('@@RID@@', $Rid).Replace('@@ARCHIVE@@', "envmux-$Version-$Rid.$extension")
+    [IO.File]::WriteAllText((Join-Path $stage 'README.md'), $readme, [Text.UTF8Encoding]::new($false))
     Copy-Item -LiteralPath (Join-Path $root 'skills') -Destination $stage -Recurse
     $skillScripts = New-Item -ItemType Directory -Path (Join-Path $stage 'scripts')
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'install-project-skills.ps1') -Destination $skillScripts.FullName
