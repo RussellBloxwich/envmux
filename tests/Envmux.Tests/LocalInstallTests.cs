@@ -76,11 +76,13 @@ public sealed class LocalInstallTests
         try
         {
             var profile = Path.Combine(root, ".zshrc");
-            File.WriteAllText(profile, "# existing setup\nexport EDITOR=vim\n");
             var bin = Path.Combine(root, "bin");
+            var (_, disabled) = LocalInstall.ShellPath(root, "zsh", bin);
+            File.WriteAllText(profile, "# existing setup\nexport EDITOR=vim\n# " + disabled + "\n");
             Assert.Equal(profile, LocalInstall.WriteShellPath(root, "zsh", bin));
             var once = File.ReadAllText(profile);
             Assert.StartsWith("# existing setup\nexport EDITOR=vim\n", once, StringComparison.Ordinal);
+            Assert.Contains(disabled, File.ReadLines(profile));
             LocalInstall.WriteShellPath(root, "zsh", bin);
             Assert.Equal(once, File.ReadAllText(profile));
         }

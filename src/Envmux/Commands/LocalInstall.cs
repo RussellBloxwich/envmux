@@ -181,7 +181,7 @@ internal static class LocalInstall
     internal static string WriteShellPath(string home, string shell, string bin)
     {
         var (file, content) = ShellPath(home, shell, bin);
-        if (File.Exists(file) && File.ReadAllText(file).Contains(content, StringComparison.Ordinal))
+        if (File.Exists(file) && File.ReadLines(file).Any(line => line.Equals(content, StringComparison.Ordinal)))
         {
             return file;
         }
