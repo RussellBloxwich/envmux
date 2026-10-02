@@ -156,5 +156,6 @@ jobs:
           if ($LASTEXITCODE -eq 0) { throw 'Release already exists; tags and archives are immutable' }
           $files = @(Get-ChildItem artifacts/dist -File | ForEach-Object FullName)
           $visibility = if ($version -match '-rc\.') { @() } else { @('--draft') }
-          gh release create $tag @files @visibility --repo '${{ github.repository }}' --verify-tag --prerelease --title "envmux $version" --notes-file .github/beta-release-notes.md
+          $notes = if ($version -match '-rc\.') { '.github/rc-release-notes.md' } else { '.github/beta-release-notes.md' }
+          gh release create $tag @files @visibility --repo '${{ github.repository }}' --verify-tag --prerelease --title "envmux $version" --notes-file $notes
           if ($LASTEXITCODE -ne 0) { throw 'Draft release failed' }
