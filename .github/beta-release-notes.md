@@ -1,6 +1,15 @@
-Windows x64 beta, MIT licensed. Requires Git and Docker Desktop running Linux
-containers. Download the zip and SHA256SUMS.txt, verify the archive, and extract.
-The executable carries its runtime and portal; host .NET and Node are not needed.
+MIT-licensed beta archives: Windows x64 (`win-x64.zip`), Linux x64 and ARM64
+(`linux-x64.tar.gz`, `linux-arm64.tar.gz`), and macOS Apple Silicon
+(`osx-arm64.tar.gz`). Linux/macOS are experimental pending real Docker-session
+rehearsals. macOS binaries are unsigned and unnotarized.
+
+Requires Git and a local Linux-container Docker engine: Docker Desktop on
+Windows/macOS, or Docker Engine with socket access on Linux. Download the
+archive for your platform and SHA256SUMS.txt, verify its hash, then extract.
+Use `tar -xzf <archive>` on Unix to preserve executable permissions. Run
+`./envmux` on Unix or `envmux.exe` on Windows. Each executable carries its
+runtime and portal; host .NET and Node are not needed. builds.json records
+the source commit and build tools for all four archives.
 
 In a committed git repository, run `envmux init --skills both`, edit and validate
 `.envmux.json`, then `envmux first-session`. Press b for the session browser,

@@ -6,7 +6,8 @@ its loopback. The terminal UI and browser portal show tasks, logs and shells.
 Commits return to `envmux/<session>` in your workstation repository.
 
 The public beta targets **Windows x64 and Docker Desktop in Linux-container
-mode**. Incus remains an optional backend. MIT licensed.
+mode**. Releases also include experimental Linux x64/ARM64 and macOS ARM64
+archives. Incus remains an optional backend. MIT licensed.
 
 ## Try it
 
@@ -15,6 +16,11 @@ Download the Windows x64 archive and `SHA256SUMS.txt` from
 SHA-256 with `Get-FileHash`, extract it, and run `envmux.exe` from a terminal.
 The binary is self-contained; using it needs neither .NET nor Node on the host.
 Docker Desktop must be running. Git must be available.
+
+For Linux or Apple Silicon macOS, choose the matching `.tar.gz`, verify its
+SHA-256, extract with `tar -xzf <archive>`, then run `./envmux`. Linux needs
+a local Docker Engine socket; macOS needs Docker Desktop. These archives
+are experimental pending live session checks; macOS builds are unsigned.
 
 In a git repository with an initial commit:
 

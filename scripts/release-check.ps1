@@ -3,7 +3,7 @@
     Check an extracted beta archive, including its Docker end-to-end behaviour.
 .DESCRIPTION
     Requires the source checkout's Release test build. Version and checksum
-    must match; the E2E harness then launches the extracted exe, not dotnet.
+    must match; the E2E harness then launches the extracted executable, not dotnet.
     Test state and extraction stay under artifacts/. -Docker creates disposable
     Docker fixtures via the existing proof-of-life test. This does not install.
 #>
@@ -28,20 +28,47 @@ if ($expected.Count -ne 1 -or
 $run = Join-Path $root ('artifacts/release-check/' + [Guid]::NewGuid().ToString('N'))
 $extract = Join-Path $run 'extracted'
 New-Item -ItemType Directory -Force $extract | Out-Null
-$zip = [IO.Compression.ZipFile]::OpenRead($archivePath)
-try {
-    foreach ($entry in $zip.Entries) {
-        $target = [IO.Path]::GetFullPath((Join-Path $extract $entry.FullName))
-        if ($target.Equals($extract, [StringComparison]::OrdinalIgnoreCase) -and $entry.FullName.EndsWith('/')) { continue }
-        if (-not $target.StartsWith($extract + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
-            throw 'Archive entry escapes its extraction directory'
+if ($archivePath.EndsWith('.zip', [StringComparison]::Ordinal)) {
+    $zip = [IO.Compression.ZipFile]::OpenRead($archivePath)
+    try {
+        foreach ($entry in $zip.Entries) {
+            $target = [IO.Path]::GetFullPath((Join-Path $extract $entry.FullName))
+            if ($target.Equals($extract, [StringComparison]::OrdinalIgnoreCase) -and $entry.FullName.EndsWith('/')) { continue }
+            if (-not $target.StartsWith($extract + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
+                throw 'Archive entry escapes its extraction directory'
+            }
+            if ((($entry.ExternalAttributes -shr 16) -band 0xF000) -eq 0xA000) { throw 'Archive contains a symbolic link' }
         }
-        if ((($entry.ExternalAttributes -shr 16) -band 0xF000) -eq 0xA000) { throw 'Archive contains a symbolic link' }
     }
+    finally { $zip.Dispose() }
+    Expand-Archive -LiteralPath $archivePath -DestinationPath $extract
+    $binary = Join-Path $extract 'envmux.exe'
 }
-finally { $zip.Dispose() }
-Expand-Archive -LiteralPath $archivePath -DestinationPath $extract
-$binary = Join-Path $extract 'envmux.exe'
+elseif ($archivePath.EndsWith('.tar.gz', [StringComparison]::Ordinal)) {
+    # Check names and types before tar writes anything. Links and special files
+    # have no place in a package containing one executable and product skills.
+    $file = [IO.File]::OpenRead($archivePath)
+    $gzip = [IO.Compression.GZipStream]::new($file, [IO.Compression.CompressionMode]::Decompress)
+    $tar = [System.Formats.Tar.TarReader]::new($gzip)
+    try {
+        while ($null -ne ($entry = $tar.GetNextEntry())) {
+            if ($entry.EntryType -notin [System.Formats.Tar.TarEntryType]::RegularFile,
+                [System.Formats.Tar.TarEntryType]::V7RegularFile, [System.Formats.Tar.TarEntryType]::Directory) {
+                throw 'Archive contains a link or special file'
+            }
+            $target = [IO.Path]::GetFullPath((Join-Path $extract $entry.Name))
+            if ($target.Equals($extract, [StringComparison]::Ordinal) -and $entry.EntryType -eq [System.Formats.Tar.TarEntryType]::Directory) { continue }
+            if (-not $target.StartsWith($extract + [IO.Path]::DirectorySeparatorChar, [StringComparison]::Ordinal)) {
+                throw 'Archive entry escapes its extraction directory'
+            }
+        }
+    }
+    finally { $tar.Dispose(); $gzip.Dispose(); $file.Dispose() }
+    & tar -xzf $archivePath -C $extract
+    if ($LASTEXITCODE -ne 0) { throw 'Archive extraction failed' }
+    $binary = Join-Path $extract 'envmux'
+}
+else { throw 'Expected a .zip or .tar.gz release archive' }
 $answer = & $binary --version
 if ($LASTEXITCODE -ne 0 -or ($answer.Trim() -ne $Version -and $answer.Trim() -ne "envmux $Version")) {
     throw 'Extracted binary does not report the requested version'

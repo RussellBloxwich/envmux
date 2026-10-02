@@ -1,8 +1,20 @@
 # Beta launch
 
-The initial public target is Windows x64 with Docker Desktop in Linux-container
-mode. Releases live at https://github.com/envmux/envmux/releases and carry the
+Release archives cover Windows x64, Linux x64/ARM64 and macOS ARM64.
+Windows uses Docker Desktop in Linux-container mode; Linux uses Docker Engine
+with access to its local socket; macOS uses Docker Desktop. Releases live at https://github.com/envmux/envmux/releases and carry the
 MIT license, self-contained executable, project skills and SHA-256 checksums.
+
+Unix archives are `.tar.gz` to preserve executable permissions; Windows uses
+`.zip`. Every archive includes the runtime, portal, MIT license and skills. The
+release carries a combined `SHA256SUMS.txt` and `builds.json` identifying the
+source commit for each platform. Linux/macOS builds are experimental until
+real Docker sessions have been rehearsed on those hosts. macOS binaries are
+unsigned and unnotarized.
+
+Release-branch pushes and manual runs build review archives on each native
+runner. Beta tag pushes require the audit and all four builds to pass before
+creating one draft prerelease. Existing tags and releases are never replaced.
 
 ## Release gates
 
@@ -12,8 +24,8 @@ MIT license, self-contained executable, project skills and SHA-256 checksums.
    all reachable history. Inspect strict findings separately: the configured
    exceptions cover only exact public nonce and dummy-auth fixtures.
 3. Build a versioned archive with `scripts/release-build.ps1 -Version
-   0.1.0-beta.1`; verify it with `scripts/release-check.ps1 -Archive <zip>
-   -Version 0.1.0-beta.1 -Docker`. Use a new version for every changed artifact.
+   0.1.0-beta.2 -Rid linux-arm64` (or `win-x64`, `linux-x64`, `osx-arm64`); verify it with `scripts/release-check.ps1 -Archive <zip-or-tar.gz>
+   -Version 0.1.0-beta.2 -Docker`. Use a new version for every changed artifact.
 4. Review a clean source commit. Run `scripts/export-initial.ps1` if making a
    fresh public repository with one `initial commit`. It exports HEAD, never
    rewrites local history, and refuses dirty trees by default. Use `-WorkingTree` to review an audited snapshot before committing. Preserve the MIT attribution.

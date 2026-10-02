@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Build a Windows beta archive without installing it or changing PATH.
+    Build a platform beta archive without installing it or changing PATH.
 .DESCRIPTION
     Requires .NET 10 and Node 24. The version is explicit so an immutable beta
     tag, filename and binary can agree. Output is a new directory under ignored
@@ -11,7 +11,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)][ValidatePattern('^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$')][string]$Version,
-    [ValidateSet('win-x64', 'win-arm64')][string]$Rid = 'win-x64'
+    [ValidateSet('win-x64', 'win-arm64', 'linux-x64', 'linux-arm64', 'osx-arm64')][string]$Rid = 'win-x64'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -40,16 +40,26 @@ try {
         -p:IncludeSourceRevisionInInformationalVersion=false -p:EnableCompressionInSingleFile=true `
         -p:DebugType=none --output $published --nologo
     if ($LASTEXITCODE -ne 0) { throw 'Publish failed' }
-    if (-not (Test-Path -LiteralPath (Join-Path $published 'envmux.exe'))) { throw 'Publish produced no executable' }
+    $binaryName = if ($Rid.StartsWith('win-', [StringComparison]::Ordinal)) { 'envmux.exe' } else { 'envmux' }
+    if (-not (Test-Path -LiteralPath (Join-Path $published $binaryName))) { throw 'Publish produced no executable' }
     # The Web SDK also publishes IIS hosting and portal source manifests. The
     # beta is the standalone executable and the explicit product assets only.
-    Copy-Item -LiteralPath (Join-Path $published 'envmux.exe') -Destination $stage
+    Copy-Item -LiteralPath (Join-Path $published $binaryName) -Destination $stage
     Copy-Item -LiteralPath (Join-Path $root 'LICENSE') -Destination $stage
     Copy-Item -LiteralPath (Join-Path $root 'skills') -Destination $stage -Recurse
     $skillScripts = New-Item -ItemType Directory -Path (Join-Path $stage 'scripts')
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'install-project-skills.ps1') -Destination $skillScripts.FullName
-    $archive = Join-Path $dist "envmux-$Version-$Rid.zip"
-    & tar -a -cf $archive -C $stage .
+    if ($Rid.StartsWith('win-', [StringComparison]::Ordinal)) {
+        $archive = Join-Path $dist "envmux-$Version-$Rid.zip"
+        & tar -a -cf $archive -C $stage .
+    }
+    else {
+        if ($IsWindows) { throw 'Build Unix archives on a Unix runner to preserve executable permissions' }
+        & chmod +x (Join-Path $stage $binaryName)
+        if ($LASTEXITCODE -ne 0) { throw 'Could not set executable permissions' }
+        $archive = Join-Path $dist "envmux-$Version-$Rid.tar.gz"
+        & tar -czf $archive -C $stage .
+    }
     if ($LASTEXITCODE -ne 0) { throw 'Archive failed' }
     $hash = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
     [IO.File]::WriteAllText((Join-Path $dist 'SHA256SUMS.txt'), "$hash  $([IO.Path]::GetFileName($archive))`n", [Text.UTF8Encoding]::new($false))
