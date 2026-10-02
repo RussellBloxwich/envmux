@@ -71,6 +71,12 @@ try {
         nativeAot = $true; binaryBytes = (Get-Item -LiteralPath (Join-Path $stage $binaryName)).Length; archiveBytes = (Get-Item -LiteralPath $archive).Length
         sdk = $sdk; node = $nodeVersion; builtUtc = [DateTime]::UtcNow.ToString('O', [Globalization.CultureInfo]::InvariantCulture)
     } | ConvertTo-Json), [Text.UTF8Encoding]::new($false))
+    $binaryBytes = (Get-Item -LiteralPath (Join-Path $stage $binaryName)).Length
+    $archiveBytes = (Get-Item -LiteralPath $archive).Length
+    Write-Host "Native AOT $Rid`: binary $binaryBytes bytes; archive $archiveBytes bytes"
+    if ($env:GITHUB_ACTIONS -eq 'true') {
+        Write-Output "::notice title=Native AOT sizes::$Rid binary=$binaryBytes bytes archive=$archiveBytes bytes"
+    }
     Write-Host "Candidate built: $dist"
     if ($dirty) { Write-Host 'Working tree has changes; this is a review candidate, not a reproducible tagged release.' }
 }
