@@ -298,7 +298,7 @@ internal sealed class PortalHost(Session.Session session, RoomFeed room) : IDisp
         MapChat(app.MapGroup("/api"));
         var kitchen = app.MapGroup("/api/kitchen");
         kitchen.MapGet("/agents", (HttpContext context) => JsonAsync(context,
-            JsonSerializer.Serialize(new { agents = AgentRegistry.List(session.Plan.Directory) }, AgentRegistry.Json)));
+            WireJson.Serialize(WireJson.Object(AgentRegistry.Json, ("agents", AgentRegistry.List(session.Plan.Directory))), AgentRegistry.Json)));
         kitchen.MapPost("/agents", DispatchAsync);
         kitchen.MapPost("/agents/{name}/stop", StopAgentAsync);
         kitchen.MapGet("/agents/{name}/log", AgentLogAsync);
@@ -317,7 +317,7 @@ internal sealed class PortalHost(Session.Session session, RoomFeed room) : IDisp
     }
 
     /// <summary>What the browser sends to start an agent, or to speak.</summary>
-    private sealed record AgentRequest(string? Name, string? Prompt, string? Nick, string? To, string? Text);
+    internal sealed record AgentRequest(string? Name, string? Prompt, string? Nick, string? To, string? Text);
 
     private async Task DispatchAsync(HttpContext context)
     {
@@ -349,12 +349,10 @@ internal sealed class PortalHost(Session.Session session, RoomFeed room) : IDisp
     /// channel between the two processes but the directory.
     /// </remarks>
     private Task AgentsAsync(HttpContext context) =>
-        JsonAsync(context, JsonSerializer.Serialize(new
-        {
-            room = Agents.Chatroom.Room(session.Plan.Project),
-            directory = Agents.AgentRegistry.Directory,
-            agents = Agents.AgentRegistry.List(session.Plan.Directory),
-        }, Agents.AgentRegistry.Json));
+        JsonAsync(context, WireJson.Serialize(WireJson.Object(AgentRegistry.Json,
+            ("room", Agents.Chatroom.Room(session.Plan.Project)),
+            ("directory", Agents.AgentRegistry.Directory),
+            ("agents", Agents.AgentRegistry.List(session.Plan.Directory))), Agents.AgentRegistry.Json));
 
     /// <summary>
     /// Start a remote agent from the page: a task, a name, and this session's repository.
@@ -399,7 +397,7 @@ internal sealed class PortalHost(Session.Session session, RoomFeed room) : IDisp
             session.Log.Info($"portal: started remote agent '{record.Name}' on {record.Branch}");
 
             context.Response.StatusCode = StatusCodes.Status201Created;
-            await JsonAsync(context, JsonSerializer.Serialize(record, Agents.AgentRegistry.Json)).ConfigureAwait(false);
+            await JsonAsync(context, WireJson.Serialize(record, Agents.AgentRegistry.Json)).ConfigureAwait(false);
         }
         catch (Exception e) when (e is Agents.AgentException or Config.ConfigException)
         {
@@ -476,14 +474,12 @@ internal sealed class PortalHost(Session.Session session, RoomFeed room) : IDisp
                 return;
             }
 
-            await JsonAsync(context, JsonSerializer.Serialize(new
-            {
-                room = Chatroom.Room(session.Plan.Project),
-                path = Chatroom.RoomDirectory,
-                names = Chatroom.Names(session.Plan.Directory),
-                lines = Chatroom.ParseAll(recent.Entries.Select(e => e.Raw)),
-                cursor = recent.Cursor.ToString(),
-            }, AgentRegistry.Json)).ConfigureAwait(false);
+            await JsonAsync(context, WireJson.Serialize(WireJson.Object(AgentRegistry.Json,
+                ("room", Chatroom.Room(session.Plan.Project)),
+                ("path", Chatroom.RoomDirectory),
+                ("names", Chatroom.Names(session.Plan.Directory)),
+                ("lines", Chatroom.ParseAll(recent.Entries.Select(e => e.Raw))),
+                ("cursor", recent.Cursor.ToString())), AgentRegistry.Json)).ConfigureAwait(false);
 
             return;
         }
@@ -562,7 +558,7 @@ internal sealed class PortalHost(Session.Session session, RoomFeed room) : IDisp
         var delta = await room.AppendAsync(line, DateTime.Now, context.RequestAborted).ConfigureAwait(false);
 
         context.Response.StatusCode = StatusCodes.Status201Created;
-        await JsonAsync(context, JsonSerializer.Serialize(new { line, cursor = delta.Cursor.ToString() }, AgentRegistry.Json))
+        await JsonAsync(context, WireJson.Serialize(WireJson.Object(AgentRegistry.Json, ("line", line), ("cursor", delta.Cursor.ToString())), AgentRegistry.Json))
             .ConfigureAwait(false);
     }
 
@@ -689,8 +685,8 @@ internal sealed class PortalHost(Session.Session session, RoomFeed room) : IDisp
                         // is handed the next.
                         cursor = cursor with { Bucket = entry.Bucket, Count = Advance(cursor, entry) };
 
-                        var frame = JsonSerializer.SerializeToUtf8Bytes(
-                            new { bucket = entry.Bucket, raw = entry.Raw, line = entry.Line, cursor = cursor.ToString() },
+                        var frame = WireJson.SerializeToUtf8Bytes(
+                            WireJson.Object(AgentRegistry.Json, ("bucket", entry.Bucket), ("raw", entry.Raw), ("line", entry.Line), ("cursor", cursor.ToString())),
                             AgentRegistry.Json);
 
                         await socket.SendAsync(frame, WebSocketMessageType.Text, endOfMessage: true, closed.Token)
@@ -723,7 +719,7 @@ internal sealed class PortalHost(Session.Session session, RoomFeed room) : IDisp
 
                 try
                 {
-                    asked = JsonSerializer.Deserialize<AgentRequest>(message, AgentRegistry.Json);
+                    asked = WireJson.Deserialize<AgentRequest>(message, AgentRegistry.Json);
                 }
                 catch (JsonException)
                 {
@@ -791,18 +787,17 @@ internal sealed class PortalHost(Session.Session session, RoomFeed room) : IDisp
 
     /// <summary>A delta as JSON: the cursor, and each physical line with its bucket and — when it is one — its parse.</summary>
     private static string Delta(RoomDelta delta) =>
-        JsonSerializer.Serialize(new
-        {
-            cursor = delta.Cursor.ToString(),
-            lines = delta.Entries.Select(e => new { bucket = e.Bucket, raw = e.Raw, line = e.Line }),
-        }, AgentRegistry.Json);
+        WireJson.Serialize(WireJson.Object(AgentRegistry.Json,
+            ("cursor", delta.Cursor.ToString()),
+            ("lines", delta.Entries.Select(e => WireJson.Object(AgentRegistry.Json,
+                ("bucket", e.Bucket), ("raw", e.Raw), ("line", e.Line))))), AgentRegistry.Json);
 
     /// <summary>The request body as JSON, or null when it is not.</summary>
     private static async Task<T?> ReadAsync<T>(HttpContext context) where T : class
     {
         try
         {
-            return await context.Request.ReadFromJsonAsync<T>(Agents.AgentRegistry.Json, context.RequestAborted)
+            return await context.Request.ReadFromJsonAsync(WireJson.Info<T>(Agents.AgentRegistry.Json), context.RequestAborted)
                 .ConfigureAwait(false);
         }
         catch (Exception e) when (e is JsonException or InvalidOperationException)
@@ -1100,14 +1095,14 @@ internal sealed class PortalHost(Session.Session session, RoomFeed room) : IDisp
             var target = open.Length > 0 ? open : null;
 
             session.OpenBrowser(url: target);
-            await JsonAsync(context, JsonSerializer.Serialize(
-                new { opened = true, url = target ?? session.BrowserStartUrl }, PortalState.Json)).ConfigureAwait(false);
+            await JsonAsync(context, WireJson.Serialize(
+                WireJson.Object(PortalState.Json, ("opened", true), ("url", target ?? session.BrowserStartUrl)), PortalState.Json)).ConfigureAwait(false);
         }
         catch (Socks.BrowserException e)
         {
             session.Log.Warn($"portal: browser: {e.Message}");
-            await JsonAsync(context, JsonSerializer.Serialize(
-                new { opened = false, error = e.Message }, PortalState.Json)).ConfigureAwait(false);
+            await JsonAsync(context, WireJson.Serialize(
+                WireJson.Object(PortalState.Json, ("opened", false), ("error", e.Message)), PortalState.Json)).ConfigureAwait(false);
         }
     }
 
@@ -1134,14 +1129,14 @@ internal sealed class PortalHost(Session.Session session, RoomFeed room) : IDisp
         try
         {
             await session.OpenInEditorAsync().ConfigureAwait(false);
-            await JsonAsync(context, JsonSerializer.Serialize(new { uri, opened = true }, PortalState.Json))
+            await JsonAsync(context, WireJson.Serialize(WireJson.Object(PortalState.Json, ("uri", uri), ("opened", true)), PortalState.Json))
                 .ConfigureAwait(false);
         }
         catch (EditorException e)
         {
             session.Log.Warn($"portal: {e.Message}");
-            await JsonAsync(context, JsonSerializer.Serialize(
-                new { uri, opened = false, error = e.Message }, PortalState.Json)).ConfigureAwait(false);
+            await JsonAsync(context, WireJson.Serialize(
+                WireJson.Object(PortalState.Json, ("uri", uri), ("opened", false), ("error", e.Message)), PortalState.Json)).ConfigureAwait(false);
         }
     }
 
@@ -1305,7 +1300,7 @@ internal sealed class PortalHost(Session.Session session, RoomFeed room) : IDisp
     private static async Task ProblemAsync(HttpContext context, int status, string message)
     {
         context.Response.StatusCode = status;
-        await JsonAsync(context, JsonSerializer.Serialize(new { error = message }, PortalState.Json))
+        await JsonAsync(context, WireJson.Serialize(WireJson.Object(PortalState.Json, ("error", message)), PortalState.Json))
             .ConfigureAwait(false);
     }
 

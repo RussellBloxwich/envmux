@@ -25,23 +25,29 @@ namespace Envmux.Host;
 /// the host's API, so the range is the instances' business and not this
 /// machine's routing table's.
 /// </para>
+/// <para>
+/// JSON setters preserve field initializers when an older file omits fields.
+/// The .NET 10 source generator assigns default values to missing init-only
+/// properties, which erased the network and stranded legacy host records.
+/// </para>
 /// </remarks>
 internal sealed record HostConfig
 {
+
     /// <summary>The bridge's own address and prefix — <c>10.100.0.1/24</c>.</summary>
-    public string Cidr { get; init; } = DefaultCidr;
+    public string Cidr { get; set; } = DefaultCidr;
 
     /// <summary>What dnsmasq hands out, leaving headroom below it for pinned addresses.</summary>
-    public string DhcpRange { get; init; } = DefaultDhcpRange;
+    public string DhcpRange { get; set; } = DefaultDhcpRange;
 
     /// <summary>The zone instance names are resolvable under.</summary>
-    public string DnsDomain { get; init; } = DefaultDnsDomain;
+    public string DnsDomain { get; set; } = DefaultDnsDomain;
 
     /// <summary>The Hyper-V VM's name.</summary>
-    public string VmName { get; init; } = DefaultVmName;
+    public string VmName { get; set; } = DefaultVmName;
 
     /// <summary>The Hyper-V virtual switch the VM's one adapter sits on.</summary>
-    public string Switch { get; init; } = DefaultSwitch;
+    public string Switch { get; set; } = DefaultSwitch;
 
     /// <summary>
     /// The VM's MAC, fixed before the VM exists.
@@ -52,10 +58,10 @@ internal sealed record HostConfig
     /// here, once, is what makes the build repeatable: the seed is authored
     /// before the VM exists and the two agree because both read this.
     /// </remarks>
-    public string Mac { get; init; } = DefaultMac;
+    public string Mac { get; set; } = DefaultMac;
 
     /// <summary>Where incusd answers, as <c>host:port</c>. Empty until the VM has an address.</summary>
-    public string Api { get; init; } = "";
+    public string Api { get; set; } = "";
 
     /// <summary>
     /// The SHA-256 fingerprint of the certificate incusd presents.
@@ -67,13 +73,13 @@ internal sealed record HostConfig
     /// to trusting anything — a client that quietly accepts an unknown
     /// certificate is a client with no authentication at all.
     /// </remarks>
-    public string Fingerprint { get; init; } = "";
+    public string Fingerprint { get; set; } = "";
 
     /// <summary>The image instances are created from when a session does not name one.</summary>
-    public string Image { get; init; } = DefaultImage;
+    public string Image { get; set; } = DefaultImage;
 
     /// <summary>The remote <see cref="Image"/> is pulled from.</summary>
-    public string ImageServer { get; init; } = DefaultImageServer;
+    public string ImageServer { get; set; } = DefaultImageServer;
 
     /// <summary>
     /// Which backend the incusd this talks to lives on.
@@ -94,7 +100,7 @@ internal sealed record HostConfig
     /// stands on.
     /// </para>
     /// </remarks>
-    public string Provider { get; init; } = DefaultProvider;
+    public string Provider { get; set; } = DefaultProvider;
 
     /// <summary>
     /// The Incus network every session's instance is attached to.
@@ -105,7 +111,7 @@ internal sealed record HostConfig
     /// adopted network is attached to and never reconfigured or deleted: its
     /// range and its zone are read from it, not written to it.
     /// </remarks>
-    public string Network { get; init; } = DefaultNetwork;
+    public string Network { get; set; } = DefaultNetwork;
 
     /// <summary>
     /// Written by an older envmux: the next hop of the route it added for
@@ -118,7 +124,7 @@ internal sealed record HostConfig
     /// <c>host reset</c> and a swap clear it. <c>archive/zone/</c> is what it
     /// was for.
     /// </remarks>
-    public string Gateway { get; init; } = "";
+    public string Gateway { get; set; } = "";
 
     /// <summary>
     /// Written by an older envmux: the address of the <c>envmux-util</c>
@@ -126,7 +132,7 @@ internal sealed record HostConfig
     /// nothing uses it.
     /// </summary>
     /// <remarks>Kept for the reason <see cref="Gateway"/> is.</remarks>
-    public string Resolver { get; init; } = "";
+    public string Resolver { get; set; } = "";
 
     public const string DefaultCidr = "10.100.0.1/24";
     /// <summary>
@@ -217,6 +223,7 @@ internal sealed record HostConfig
 
     private static readonly JsonSerializerOptions Json = new()
     {
+        TypeInfoResolver = WireJsonContext.Default,
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         PropertyNameCaseInsensitive = true,
         ReadCommentHandling = JsonCommentHandling.Skip,
@@ -276,7 +283,7 @@ internal sealed record HostConfig
 
         try
         {
-            return JsonSerializer.Deserialize<HostConfig>(File.ReadAllText(Location), Json) ?? new HostConfig();
+            return WireJson.Deserialize<HostConfig>(File.ReadAllText(Location), Json) ?? new HostConfig();
         }
         catch (JsonException e)
         {
@@ -299,7 +306,7 @@ internal sealed record HostConfig
         System.IO.Directory.CreateDirectory(Directory);
 
         var temporary = Location + ".new";
-        File.WriteAllText(temporary, JsonSerializer.Serialize(this, Json) + Environment.NewLine);
+        File.WriteAllText(temporary, WireJson.Serialize(this, Json) + Environment.NewLine);
         File.Move(temporary, Location, overwrite: true);
     }
 

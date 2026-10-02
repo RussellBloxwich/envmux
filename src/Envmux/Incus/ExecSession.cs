@@ -187,7 +187,7 @@ internal sealed class ExecSession : Backends.IInteractiveExec
 
         try
         {
-            var bytes = JsonSerializer.SerializeToUtf8Bytes(message, IncusJson.Options);
+            var bytes = WireJson.SerializeToUtf8Bytes(message, IncusJson.Options);
 
             await _control.SendAsync(bytes, WebSocketMessageType.Text, endOfMessage: true, ct)
                 .ConfigureAwait(false);

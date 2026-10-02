@@ -86,6 +86,14 @@ try {
     New-Item -ItemType Directory -Path $project | Out-Null
     & $binary --directory $project --dry-run --backend docker
     if ($LASTEXITCODE -ne 0) { throw 'Extracted binary failed its dry-run' }
+    # Exercise generated configuration metadata and embedded skills in the
+    # executable itself; managed unit tests cannot detect missing native roots.
+    & $binary --directory $project init --skills both
+    if ($LASTEXITCODE -ne 0) { throw 'Extracted binary failed setup with local skills' }
+    foreach ($command in @('validate', 'show', 'schema')) {
+        & $binary --directory $project config $command | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw "Extracted binary failed config $command" }
+    }
     if ($Docker) {
         & dotnet test --no-build --configuration Release --filter 'FullyQualifiedName~ProofOfLifeTests|FullyQualifiedName~KitchenWireTests' `
             --logger 'trx;LogFileName=release.trx' --results-directory $run --verbosity minimal

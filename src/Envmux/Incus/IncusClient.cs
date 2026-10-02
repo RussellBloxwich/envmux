@@ -63,7 +63,7 @@ internal readonly record struct IncusResponse(
 
         try
         {
-            return Metadata.Deserialize<T>(IncusJson.Options);
+            return WireJson.Deserialize<T>(Metadata, IncusJson.Options);
         }
         catch (JsonException e)
         {
@@ -80,6 +80,7 @@ internal static class IncusJson
 {
     public static readonly JsonSerializerOptions Options = new()
     {
+        TypeInfoResolver = WireJsonContext.Default,
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
         PropertyNameCaseInsensitive = true,
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
@@ -324,7 +325,7 @@ internal sealed class IncusClient : IDisposable
 
         if (body is not null)
         {
-            request.Content = JsonContent.Create(body, options: IncusJson.Options);
+            request.Content = WireJson.Content(body, IncusJson.Options);
         }
 
         HttpResponseMessage response;

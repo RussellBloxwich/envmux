@@ -14,7 +14,7 @@ archives. Incus remains an optional backend. MIT licensed.
 Download the Windows x64 archive and `SHA256SUMS.txt` from
 [envmux/envmux releases](https://github.com/envmux/envmux/releases). Check its
 SHA-256 with `Get-FileHash`, extract it, and run `envmux.exe` from a terminal.
-The binary is self-contained; using it needs neither .NET nor Node on the host.
+Release binaries are compiled with Native AOT, trimmed and optimized for size; using it needs neither .NET nor Node on the host.
 Docker Desktop must be running. Git must be available.
 
 For Linux or Apple Silicon macOS, choose the matching `.tar.gz`, verify its

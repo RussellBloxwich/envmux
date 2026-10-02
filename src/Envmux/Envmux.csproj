@@ -35,11 +35,14 @@
          program is only ever a question somebody has to answer. -->
     <IsTransformWebConfigDisabled>true</IsTransformWebConfigDisabled>
 
-    <!-- One file you can drop on a PATH. Trimming is not on yet, but the
-         reason it was blocked has gone: what stood in the way was a UI
-         toolkit's reflection surface, and there is no UI toolkit. What is
-         left to measure is YARP and the JSON source generators. -->
-    <PublishSingleFile>true</PublishSingleFile>
+    <!-- Native releases have no runtime to reflect over. Keep the same JSON
+         boundary and analyzers in SDK builds so tests exercise that contract. -->
+    <JsonSerializerIsReflectionEnabledByDefault>false</JsonSerializerIsReflectionEnabledByDefault>
+    <EnableAotAnalyzer>true</EnableAotAnalyzer>
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+    <EnableRequestDelegateGenerator>true</EnableRequestDelegateGenerator>
+    <OptimizationPreference>Size</OptimizationPreference>
+    <PublishSingleFile Condition="'$(PublishAot)' != 'true'">true</PublishSingleFile>
     <SelfContained>false</SelfContained>
 
     <!-- Installable as a .NET global tool under a name that cannot be mistaken

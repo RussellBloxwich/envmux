@@ -37,7 +37,7 @@ jobs:
           - os: windows-latest
             rid: win-x64
             extension: zip
-          - os: ubuntu-latest
+          - os: ubuntu-24.04
             rid: linux-x64
             extension: tar.gz
           - os: ubuntu-24.04-arm
@@ -58,6 +58,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
+      - name: Install Linux native compiler
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes clang zlib1g-dev
       - name: Select immutable version
         id: version
         run: |
@@ -115,7 +121,7 @@ jobs:
             Copy-Item -LiteralPath $archive -Destination $dist.FullName
             $sums.Add($line[0])
             $build = Get-Content (Join-Path $source 'build.json') -Raw | ConvertFrom-Json
-            if ($build.rid -ne $rid -or $build.version -ne $version -or $build.commit -ne '${{ github.sha }}' -or $build.dirty) { throw "Unexpected build metadata: $rid" }
+            if ($build.rid -ne $rid -or $build.version -ne $version -or $build.commit -ne '${{ github.sha }}' -or $build.dirty -or $build.nativeAot -ne $true) { throw "Unexpected build metadata: $rid" }
             $builds += $build
           }
           [IO.File]::WriteAllText((Join-Path $dist.FullName 'SHA256SUMS.txt'), ($sums -join "`n") + "`n")

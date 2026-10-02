@@ -143,7 +143,7 @@ public class IncusResponseTests
             ["environment.DROP"] = null,
         };
 
-        var json = JsonSerializer.Serialize(new { config }, IncusJson.Options);
+        var json = Envmux.Serialization.WireJson.Serialize(Envmux.Serialization.WireJson.Object(IncusJson.Options, ("config", config)), IncusJson.Options);
 
         Assert.Contains("\"environment.KEEP\":\"yes\"", json, StringComparison.Ordinal);
         Assert.Contains("\"environment.DROP\":null", json, StringComparison.Ordinal);

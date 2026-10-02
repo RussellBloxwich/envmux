@@ -52,7 +52,7 @@ internal sealed record ShimRequest
 
         return buffer.Length == 0
             ? default
-            : JsonSerializer.Deserialize<T>(buffer.GetBuffer().AsSpan(0, (int)buffer.Length), DockerJson.Options);
+            : WireJson.Deserialize<T>(buffer.GetBuffer().AsSpan(0, (int)buffer.Length), DockerJson.Options);
     }
 }
 
@@ -87,10 +87,10 @@ internal sealed class ShimResponse(Stream output, Func<Stream> hijack) : IDispos
     public Task JsonAsync(object value, CancellationToken ct) => JsonAsync(value, 200, ct);
 
     public Task JsonAsync(object value, int status, CancellationToken ct) =>
-        BytesAsync(JsonSerializer.SerializeToUtf8Bytes(value, DockerJson.Options), status, "application/json", ct);
+        BytesAsync(WireJson.SerializeToUtf8Bytes(value, DockerJson.Options), status, "application/json", ct);
 
     public Task ErrorAsync(int status, string message, CancellationToken ct) =>
-        JsonAsync(new { message }, status, ct);
+        JsonAsync(WireJson.Object(DockerJson.Options, ("message", message)), status, ct);
 
     public Task EmptyAsync(int status, CancellationToken ct) => BytesAsync([], status, null, ct);
 

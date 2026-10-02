@@ -137,6 +137,7 @@ internal static class DockerSpec
 
     private static readonly JsonSerializerOptions Json = new()
     {
+        TypeInfoResolver = WireJsonContext.Default,
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         PropertyNameCaseInsensitive = true,
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
@@ -406,7 +407,7 @@ internal static class DockerSpec
 
         try
         {
-            return JsonSerializer.Deserialize<InstancesPost>(json, Json);
+            return WireJson.Deserialize<InstancesPost>(json, Json);
         }
         catch (JsonException)
         {
@@ -545,7 +546,7 @@ internal static class DockerSpec
 
         labels[Labels.Kind] = IsService(spec) ? ServiceKind : SessionKind;
         labels[Labels.Instance] = spec.Name;
-        labels[Labels.Spec] = JsonSerializer.Serialize(spec, Json);
+        labels[Labels.Spec] = WireJson.Serialize(spec, Json);
 
         return labels;
     }

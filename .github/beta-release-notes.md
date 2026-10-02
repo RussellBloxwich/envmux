@@ -7,9 +7,9 @@ Requires Git and a local Linux-container Docker engine: Docker Desktop on
 Windows/macOS, or Docker Engine with socket access on Linux. Download the
 archive for your platform and SHA256SUMS.txt, verify its hash, then extract.
 Use `tar -xzf <archive>` on Unix to preserve executable permissions. Run
-`./envmux` on Unix or `envmux.exe` on Windows. Each executable carries its
-runtime and portal; host .NET and Node are not needed. builds.json records
-the source commit and build tools for all four archives.
+`./envmux` on Unix or `envmux.exe` on Windows. Each executable is compiled with Native AOT, trimmed and optimized for size,
+with the portal embedded; host .NET and Node are not needed. builds.json records
+the source commit, native compilation, binary/archive sizes and build tools for all four archives.
 
 In a committed git repository, run `envmux init --skills both`, edit and validate
 `.envmux.json`, then `envmux first-session`. Press b for the session browser,

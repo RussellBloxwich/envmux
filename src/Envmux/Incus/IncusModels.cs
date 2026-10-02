@@ -44,12 +44,12 @@ internal static class IncusStatus
 internal sealed record ServerInfo
 {
     /// <summary>"trusted" once the seeded certificate is presented, "untrusted" otherwise.</summary>
-    public string Auth { get; init; } = "";
+    public string Auth { get; set; } = "";
 
     /// <summary>Every optional feature this daemon has. Feature detection reads this and not the version.</summary>
-    public IReadOnlyList<string> ApiExtensions { get; init; } = [];
+    public IReadOnlyList<string> ApiExtensions { get; set; } = [];
 
-    public ServerEnvironment Environment { get; init; } = new();
+    public ServerEnvironment Environment { get; set; } = new();
 
     public bool IsTrusted => Auth.Equals("trusted", StringComparison.Ordinal);
 
@@ -58,13 +58,13 @@ internal sealed record ServerInfo
 
 internal sealed record ServerEnvironment
 {
-    public string ServerVersion { get; init; } = "";
+    public string ServerVersion { get; set; } = "";
 
-    public string ServerName { get; init; } = "";
+    public string ServerName { get; set; } = "";
 
-    public string Kernel { get; init; } = "";
+    public string Kernel { get; set; } = "";
 
-    public string KernelArchitecture { get; init; } = "";
+    public string KernelArchitecture { get; set; } = "";
 
     /// <summary>
     /// What kinds of instance this daemon can run, as it spells them: <c>lxc</c>,
@@ -76,7 +76,7 @@ internal sealed record ServerEnvironment
     /// all — and a daemon inside a container, or on a host without KVM, says
     /// only <c>lxc</c>.
     /// </remarks>
-    public string Driver { get; init; } = "";
+    public string Driver { get; set; } = "";
 
     /// <summary>Every storage driver this daemon was built with.</summary>
     /// <remarks>
@@ -86,9 +86,9 @@ internal sealed record ServerEnvironment
     /// deserialising that into a string throws, which took out `host trust`
     /// after it had already pinned the fingerprint and printed success.
     /// </remarks>
-    public IReadOnlyList<StorageDriver> StorageSupportedDrivers { get; init; } = [];
+    public IReadOnlyList<StorageDriver> StorageSupportedDrivers { get; set; } = [];
 
-    public string Storage { get; init; } = "";
+    public string Storage { get; set; } = "";
 }
 
 /// <summary>One of the storage drivers incusd was built with.</summary>
@@ -98,33 +98,33 @@ internal sealed record ServerEnvironment
 /// </remarks>
 internal sealed record StorageDriver
 {
-    public string Name { get; init; } = "";
+    public string Name { get; set; } = "";
 
-    public string Version { get; init; } = "";
+    public string Version { get; set; } = "";
 
     /// <summary>Whether it is a driver for storage that lives somewhere else.</summary>
-    public bool Remote { get; init; }
+    public bool Remote { get; set; }
 }
 
 /// <summary>An async operation, as <c>/wait</c> hands it back.</summary>
 internal sealed record IncusOperation
 {
-    public string Id { get; init; } = "";
+    public string Id { get; set; } = "";
 
     /// <summary>"task", "websocket" or "token".</summary>
-    public string Class { get; init; } = "";
+    public string Class { get; set; } = "";
 
-    public string Description { get; init; } = "";
+    public string Description { get; set; } = "";
 
-    public string Status { get; init; } = "";
+    public string Status { get; set; } = "";
 
-    public int StatusCode { get; init; }
+    public int StatusCode { get; set; }
 
     /// <summary>Why it failed, when it did.</summary>
-    public string Err { get; init; } = "";
+    public string Err { get; set; } = "";
 
     /// <summary>Whatever the operation carries — for an exec, the one-time socket secrets.</summary>
-    public JsonElement Metadata { get; init; }
+    public JsonElement Metadata { get; set; }
 
     public bool Succeeded => StatusCode == IncusStatus.Success;
 
@@ -199,24 +199,24 @@ internal sealed record IncusOperation
 /// <summary>An instance, as the API lists it.</summary>
 internal sealed record Instance
 {
-    public string Name { get; init; } = "";
+    public string Name { get; set; } = "";
 
-    public string Status { get; init; } = "";
+    public string Status { get; set; } = "";
 
-    public int StatusCode { get; init; }
+    public int StatusCode { get; set; }
 
     /// <summary>"container" or "virtual-machine". v1 only ever makes the former.</summary>
-    public string Type { get; init; } = "container";
+    public string Type { get; set; } = "container";
 
-    public string Description { get; init; } = "";
+    public string Description { get; set; } = "";
 
-    public IReadOnlyDictionary<string, string> Config { get; init; } =
+    public IReadOnlyDictionary<string, string> Config { get; set; } =
         new Dictionary<string, string>(StringComparer.Ordinal);
 
-    public IReadOnlyDictionary<string, Dictionary<string, string>> Devices { get; init; } =
+    public IReadOnlyDictionary<string, Dictionary<string, string>> Devices { get; set; } =
         new Dictionary<string, Dictionary<string, string>>(StringComparer.Ordinal);
 
-    public IReadOnlyList<string> Profiles { get; init; } = [];
+    public IReadOnlyList<string> Profiles { get; set; } = [];
 
     public bool IsRunning => IncusStatus.IsUp(StatusCode);
 }
@@ -224,11 +224,11 @@ internal sealed record Instance
 /// <summary>What an instance is doing right now, including the address it took.</summary>
 internal sealed record InstanceState
 {
-    public string Status { get; init; } = "";
+    public string Status { get; set; } = "";
 
-    public int StatusCode { get; init; }
+    public int StatusCode { get; set; }
 
-    public IReadOnlyDictionary<string, InstanceNetwork> Network { get; init; } =
+    public IReadOnlyDictionary<string, InstanceNetwork> Network { get; set; } =
         new Dictionary<string, InstanceNetwork>(StringComparer.Ordinal);
 
     public bool IsRunning => IncusStatus.IsUp(StatusCode);
@@ -251,22 +251,22 @@ internal sealed record InstanceState
 
 internal sealed record InstanceNetwork
 {
-    public IReadOnlyList<InstanceAddress> Addresses { get; init; } = [];
+    public IReadOnlyList<InstanceAddress> Addresses { get; set; } = [];
 
-    public string Hwaddr { get; init; } = "";
+    public string Hwaddr { get; set; } = "";
 }
 
 internal sealed record InstanceAddress
 {
     /// <summary>"inet" or "inet6".</summary>
-    public string Family { get; init; } = "";
+    public string Family { get; set; } = "";
 
-    public string Address { get; init; } = "";
+    public string Address { get; set; } = "";
 
-    public string Netmask { get; init; } = "";
+    public string Netmask { get; set; } = "";
 
     /// <summary>"global", "link" or "local".</summary>
-    public string Scope { get; init; } = "";
+    public string Scope { get; set; } = "";
 }
 
 /// <summary>
@@ -280,10 +280,10 @@ internal sealed record InstanceAddress
 internal sealed record NetworkLease
 {
     /// <summary>Whose it is: usually an instance's name.</summary>
-    public string Hostname { get; init; } = "";
+    public string Hostname { get; set; } = "";
 
     /// <summary>IPv4 or IPv6, as text. The table carries both families.</summary>
-    public string Address { get; init; } = "";
+    public string Address { get; set; } = "";
 
     /// <summary>
     /// "dynamic" for one dnsmasq handed out, "static" for one an instance's nic pins.
@@ -293,7 +293,7 @@ internal sealed record NetworkLease
     /// choosing an address: the API documents those two values, and whatever
     /// else a daemon puts here is still an address something is using.
     /// </remarks>
-    public string Type { get; init; } = "";
+    public string Type { get; set; } = "";
 }
 
 /// <summary>
@@ -301,77 +301,77 @@ internal sealed record NetworkLease
 /// </summary>
 internal sealed record IncusNetworkInfo
 {
-    public string Name { get; init; } = "";
+    public string Name { get; set; } = "";
 
-    public string Type { get; init; } = "";
+    public string Type { get; set; } = "";
 
-    public string Description { get; init; } = "";
+    public string Description { get; set; } = "";
 
-    public IReadOnlyDictionary<string, string> Config { get; init; } =
+    public IReadOnlyDictionary<string, string> Config { get; set; } =
         new Dictionary<string, string>(StringComparer.Ordinal);
 
     /// <summary>Instances and profiles currently attached, which is what makes a change disruptive.</summary>
-    public IReadOnlyList<string> UsedBy { get; init; } = [];
+    public IReadOnlyList<string> UsedBy { get; set; } = [];
 }
 
 /// <summary>Where a new instance comes from.</summary>
 internal sealed record InstanceSource
 {
     /// <summary>"image" or "copy".</summary>
-    public required string Type { get; init; }
+    public required string Type { get; set; }
 
     /// <summary>The image's alias, when this is a pull.</summary>
-    public string? Alias { get; init; }
+    public string? Alias { get; set; }
 
     /// <summary>"simplestreams" for the official remote, "oci" for a registry of application images.</summary>
-    public string? Protocol { get; init; }
+    public string? Protocol { get; set; }
 
-    public string? Server { get; init; }
+    public string? Server { get; set; }
 
     /// <summary>"pull" for a remote image, absent for a local copy.</summary>
-    public string? Mode { get; init; }
+    public string? Mode { get; set; }
 
     /// <summary>The instance or snapshot to copy, as <c>name</c> or <c>name/snapshot</c>.</summary>
-    public string? Source { get; init; }
+    public string? Source { get; set; }
 
     /// <summary>Whether the copy is a lightweight one that shares the parent's storage.</summary>
     [JsonPropertyName("instance_only")]
-    public bool? InstanceOnly { get; init; }
+    public bool? InstanceOnly { get; set; }
 }
 
 /// <summary>The body of <c>POST /1.0/instances</c>.</summary>
 internal sealed record InstancesPost
 {
-    public required string Name { get; init; }
+    public required string Name { get; set; }
 
-    public required InstanceSource Source { get; init; }
+    public required InstanceSource Source { get; set; }
 
-    public string Type { get; init; } = "container";
+    public string Type { get; set; } = "container";
 
-    public string? Description { get; init; }
+    public string? Description { get; set; }
 
-    public IReadOnlyDictionary<string, string>? Config { get; init; }
+    public IReadOnlyDictionary<string, string>? Config { get; set; }
 
-    public IReadOnlyDictionary<string, Dictionary<string, string>>? Devices { get; init; }
+    public IReadOnlyDictionary<string, Dictionary<string, string>>? Devices { get; set; }
 
-    public IReadOnlyList<string>? Profiles { get; init; }
+    public IReadOnlyList<string>? Profiles { get; set; }
 
     /// <summary>Whether to start it as part of creating it, which saves a round trip.</summary>
-    public bool Start { get; init; }
+    public bool Start { get; set; }
 }
 
 /// <summary>The body of <c>PUT /1.0/instances/{name}/state</c>.</summary>
 internal sealed record InstanceStatePut
 {
     /// <summary>"start", "stop", "restart", "freeze" or "unfreeze".</summary>
-    public required string Action { get; init; }
+    public required string Action { get; set; }
 
     /// <summary>Seconds to wait for a clean stop before the force flag decides.</summary>
-    public int Timeout { get; init; } = 30;
+    public int Timeout { get; set; } = 30;
 
-    public bool Force { get; init; }
+    public bool Force { get; set; }
 
-    public bool Stateful { get; init; }
+    public bool Stateful { get; set; }
 }
 
 /// <summary>The body of <c>POST /1.0/instances/{name}/exec</c>.</summary>
@@ -383,21 +383,21 @@ internal sealed record InstanceStatePut
 /// </remarks>
 internal sealed record ExecPost
 {
-    public required IReadOnlyList<string> Command { get; init; }
+    public required IReadOnlyList<string> Command { get; set; }
 
-    public IReadOnlyDictionary<string, string>? Environment { get; init; }
+    public IReadOnlyDictionary<string, string>? Environment { get; set; }
 
     [JsonPropertyName("wait-for-websocket")]
-    public bool WaitForWebsocket { get; init; } = true;
+    public bool WaitForWebsocket { get; set; } = true;
 
-    public bool Interactive { get; init; } = true;
+    public bool Interactive { get; set; } = true;
 
     [JsonPropertyName("record-output")]
-    public bool RecordOutput { get; init; }
+    public bool RecordOutput { get; set; }
 
-    public int Width { get; init; } = 120;
+    public int Width { get; set; } = 120;
 
-    public int Height { get; init; } = 40;
+    public int Height { get; set; } = 40;
 
     /// <summary>Which account to run as, by id.</summary>
     /// <remarks>
@@ -412,35 +412,35 @@ internal sealed record ExecPost
     /// <see cref="Command.AsUser"/>. The type stays correct so that anyone who
     /// does set it sends what the API asks for.
     /// </remarks>
-    public int? User { get; init; }
+    public int? User { get; set; }
 
     /// <summary>Which group to run as, by id. A number, for the same reason.</summary>
-    public int? Group { get; init; }
+    public int? Group { get; set; }
 
-    public string? Cwd { get; init; }
+    public string? Cwd { get; set; }
 }
 
 /// <summary>The body of <c>POST /1.0/instances/{name}/snapshots</c>.</summary>
 internal sealed record SnapshotsPost
 {
-    public required string Name { get; init; }
+    public required string Name { get; set; }
 
     /// <summary>Whether the snapshot carries running memory. Never, here: containers are restarted, not resumed.</summary>
-    public bool Stateful { get; init; }
+    public bool Stateful { get; set; }
 
-    public string? ExpiresAt { get; init; }
+    public string? ExpiresAt { get; set; }
 }
 
 /// <summary>The body of <c>POST /1.0/networks</c>: create a bridge.</summary>
 internal sealed record NetworksPost
 {
-    public required string Name { get; init; }
+    public required string Name { get; set; }
 
-    public required string Type { get; init; }
+    public required string Type { get; set; }
 
-    public string? Description { get; init; }
+    public string? Description { get; set; }
 
-    public required IReadOnlyDictionary<string, string> Config { get; init; }
+    public required IReadOnlyDictionary<string, string> Config { get; set; }
 }
 
 /// <summary>
@@ -463,15 +463,15 @@ internal sealed record NetworksPost
 internal sealed record CertificatesPost
 {
     /// <summary>"client", for a certificate that may drive the API.</summary>
-    public required string Type { get; init; }
+    public required string Type { get; set; }
 
     /// <summary>A label the daemon's owner sees in <c>incus config trust list</c>.</summary>
-    public string? Name { get; init; }
+    public string? Name { get; set; }
 
     /// <summary>The one-time token the daemon's owner minted to authorise this.</summary>
     [JsonPropertyName("trust_token")]
-    public string? TrustToken { get; init; }
+    public string? TrustToken { get; set; }
 
     /// <summary>Left null, so the daemon trusts the certificate presented on the wire.</summary>
-    public string? Certificate { get; init; }
+    public string? Certificate { get; set; }
 }

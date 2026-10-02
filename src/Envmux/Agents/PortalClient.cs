@@ -62,7 +62,7 @@ internal sealed class PortalClient : IDisposable
         SendAsync(new HttpRequestMessage(HttpMethod.Get, Url(path)), ct);
 
     public Task<JsonElement> PostAsync(string path, object body, CancellationToken ct = default) =>
-        SendAsync(new HttpRequestMessage(HttpMethod.Post, Url(path)) { Content = JsonContent.Create(body) }, ct);
+        SendAsync(new HttpRequestMessage(HttpMethod.Post, Url(path)) { Content = WireJson.Content(body, AgentRegistry.Json) }, ct);
 
     private Uri Url(string path) => new(_base, $"/api{path}");
 

@@ -25,19 +25,20 @@ namespace Envmux.Editor;
 /// </remarks>
 internal static class DockerUri
 {
-    private sealed record ConfigFile(
+    internal sealed record ConfigFile(
         [property: JsonPropertyName("$mid")] int Mid,
         [property: JsonPropertyName("fsPath")] string FsPath,
         [property: JsonPropertyName("path")] string Path,
         [property: JsonPropertyName("scheme")] string Scheme);
 
-    private sealed record Authority(
+    internal sealed record Authority(
         [property: JsonPropertyName("hostPath")] string HostPath,
         [property: JsonPropertyName("localDocker")] bool LocalDocker,
         [property: JsonPropertyName("configFile")] ConfigFile ConfigFile);
 
     private static readonly JsonSerializerOptions Options = new()
     {
+        TypeInfoResolver = WireJsonContext.Default,
         DefaultIgnoreCondition = JsonIgnoreCondition.Never,
     };
 
@@ -60,7 +61,7 @@ internal static class DockerUri
             LocalDocker: false,
             new ConfigFile(1, fsPath, uriPath, "file"));
 
-        var hex = Convert.ToHexStringLower(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(authority, Options)));
+        var hex = Convert.ToHexStringLower(Encoding.UTF8.GetBytes(WireJson.Serialize(authority, Options)));
 
         var inside = string.IsNullOrEmpty(workspaceFolder)
             ? "/workspaces/" + FolderName(hostPath)
@@ -97,10 +98,10 @@ internal static class DockerUri
     public static string AttachedContainerUri(string containerName, string folder, string? dockerHost = null)
     {
         object authority = string.IsNullOrEmpty(dockerHost)
-            ? new { containerName, settings = new { } }
-            : new { containerName, settings = new { host = dockerHost } };
+            ? WireJson.Object(Options, ("containerName", containerName), ("settings", WireJson.Object(Options)))
+            : WireJson.Object(Options, ("containerName", containerName), ("settings", WireJson.Object(Options, ("host", dockerHost))));
 
-        var hex = Convert.ToHexStringLower(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(authority, Options)));
+        var hex = Convert.ToHexStringLower(Encoding.UTF8.GetBytes(WireJson.Serialize(authority, Options)));
         var inside = folder.StartsWith('/') ? folder : "/" + folder;
 
         return $"vscode-remote://attached-container+{hex}{VsCodeUri.EncodePath(inside)}";

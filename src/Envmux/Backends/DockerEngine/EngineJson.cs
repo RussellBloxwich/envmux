@@ -90,7 +90,7 @@ internal static class EngineJson
                     bindings[key] = new JsonArray();
                 }
 
-                bindings[key]!.AsArray().Add(new JsonObject
+                bindings[key]!.AsArray().Add((JsonNode)new JsonObject
                 {
                     ["HostIp"] = port.HostIp,
                     ["HostPort"] = port.HostPort.ToString(CultureInfo.InvariantCulture),
@@ -117,7 +117,7 @@ internal static class EngineJson
 
                 entry["Target"] = mount.Target;
                 entry["ReadOnly"] = mount.ReadOnly;
-                mounts.Add(entry);
+                mounts.Add((JsonNode)entry);
             }
 
             host["Mounts"] = mounts;
@@ -538,7 +538,7 @@ internal static class EngineJson
 
         foreach (var value in values)
         {
-            array.Add(value);
+            array.Add((JsonNode?)JsonValue.Create(value));
         }
 
         return array;

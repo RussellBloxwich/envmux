@@ -211,7 +211,7 @@ public class DockerShimTests
             async (request, response) =>
             {
                 parsed = await request.JsonAsync<VolumeCreateRequest>(CancellationToken.None);
-                await response.JsonAsync(new { Name = parsed!.Name }, 201, CancellationToken.None);
+                await response.JsonAsync(Envmux.Serialization.WireJson.Object(DockerJson.Options, ("Name", parsed!.Name)), 201, CancellationToken.None);
             });
 
         Assert.Equal("vscode", parsed?.Name);

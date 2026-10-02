@@ -97,6 +97,7 @@ internal sealed record PortalState(
     /// </remarks>
     public static readonly JsonSerializerOptions Json = new()
     {
+        TypeInfoResolver = WireJsonContext.Default,
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     };
@@ -153,5 +154,5 @@ internal sealed record PortalState(
                 e.At.ToString("O"), e.Level, e.Message))]);
     }
 
-    public string ToJson() => JsonSerializer.Serialize(this, Json);
+    public string ToJson() => WireJson.Serialize(this, Json);
 }

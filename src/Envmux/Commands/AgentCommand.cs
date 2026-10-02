@@ -296,10 +296,10 @@ internal static class AgentCommand
 
         if (portal is not null)
         {
-            var answer = await portal.PostAsync("/agents", new { name = plan.Session, prompt = task, nick = asked.Nick }, ct)
+            var answer = await portal.PostAsync("/agents", WireJson.Object(AgentRegistry.Json, ("name", plan.Session), ("prompt", task), ("nick", asked.Nick)), ct)
                 .ConfigureAwait(false);
 
-            record = answer.Deserialize<AgentRecord>(AgentRegistry.Json)
+            record = WireJson.Deserialize<AgentRecord>(answer, AgentRegistry.Json)
                 ?? throw new AgentException("the portal started the agent but did not describe it");
 
             Console.Error.WriteLine($"envmux: started through the portal at {portal.Describe()}");
@@ -358,7 +358,7 @@ internal static class AgentCommand
         {
             var answer = await portal.GetAsync("/agents", ct).ConfigureAwait(false);
             agents = answer.TryGetProperty("agents", out var list)
-                ? list.Deserialize<List<AgentRecord>>(AgentRegistry.Json) ?? []
+                ? WireJson.Deserialize<List<AgentRecord>>(list, AgentRegistry.Json) ?? []
                 : [];
         }
         else
@@ -390,7 +390,7 @@ internal static class AgentCommand
 
         if (portal is not null)
         {
-            var answer = await portal.PostAsync("/chat", new { nick = asked.Nick, to = asked.To, text = asked.Text }, ct)
+            var answer = await portal.PostAsync("/chat", WireJson.Object(AgentRegistry.Json, ("nick", asked.Nick), ("to", asked.To), ("text", asked.Text)), ct)
                 .ConfigureAwait(false);
 
             Console.WriteLine(answer.TryGetProperty("line", out var said) ? said.GetString() : line);
@@ -522,7 +522,7 @@ internal static class AgentCommand
 
         if (portal is not null)
         {
-            await portal.PostAsync($"/agents/{Uri.EscapeDataString(session)}/stop", new { }, ct).ConfigureAwait(false);
+            await portal.PostAsync($"/agents/{Uri.EscapeDataString(session)}/stop", WireJson.Object(AgentRegistry.Json), ct).ConfigureAwait(false);
             Console.WriteLine($"{session}: asked to stop through the portal");
             return 0;
         }

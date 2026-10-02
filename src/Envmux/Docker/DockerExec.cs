@@ -128,7 +128,7 @@ internal sealed class DockerExec : IAsyncDisposable
             return;
         }
 
-        var message = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(
+        var message = WireJson.SerializeToUtf8Bytes(
             ExecControl.Resize(width, height),
             IncusJson.Options);
 

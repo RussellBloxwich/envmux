@@ -123,6 +123,7 @@ internal static class AgentRegistry
     /// <summary>How a record is spelled — on disk, and on the portal's API, which is the same shape.</summary>
     internal static readonly JsonSerializerOptions Json = new()
     {
+        TypeInfoResolver = WireJsonContext.Default,
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
         WriteIndented = true,
@@ -152,7 +153,7 @@ internal static class AgentRegistry
 
         try
         {
-            return JsonSerializer.Deserialize<AgentRecord>(File.ReadAllText(path, Encoding.UTF8), Json);
+            return WireJson.Deserialize<AgentRecord>(File.ReadAllText(path, Encoding.UTF8), Json);
         }
         catch (JsonException)
         {
@@ -196,7 +197,7 @@ internal static class AgentRegistry
         System.IO.Directory.CreateDirectory(Path.GetDirectoryName(path)!);
 
         var temporary = $"{path}.{Environment.ProcessId.ToString(CultureInfo.InvariantCulture)}.tmp";
-        File.WriteAllText(temporary, JsonSerializer.Serialize(record, Json), Encoding.UTF8);
+        File.WriteAllText(temporary, WireJson.Serialize(record, Json), Encoding.UTF8);
         File.Move(temporary, path, overwrite: true);
     }
 

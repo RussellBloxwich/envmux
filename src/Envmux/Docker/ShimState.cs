@@ -30,31 +30,31 @@ internal sealed record ShimMount(string Type, string Source, string Destination,
 internal sealed record ShimContainer
 {
     /// <summary>64 hex characters, as Docker's are — the SHA-256 of the instance name, so it is stable across restarts.</summary>
-    public required string Id { get; init; }
+    public required string Id { get; set; }
 
     /// <summary>The <c>--name</c> the client gave, or the instance name.</summary>
-    public required string Name { get; init; }
+    public required string Name { get; set; }
 
     /// <summary>The Incus instance this is.</summary>
-    public required string Instance { get; init; }
+    public required string Instance { get; set; }
 
-    public DateTimeOffset Created { get; init; }
+    public DateTimeOffset Created { get; set; }
 
-    public Dictionary<string, string> Labels { get; init; } = new(StringComparer.Ordinal);
+    public Dictionary<string, string> Labels { get; set; } = new(StringComparer.Ordinal);
 
-    public string Image { get; init; } = "";
+    public string Image { get; set; } = "";
 
-    public IReadOnlyList<string>? Cmd { get; init; }
+    public IReadOnlyList<string>? Cmd { get; set; }
 
-    public IReadOnlyList<string>? Entrypoint { get; init; }
+    public IReadOnlyList<string>? Entrypoint { get; set; }
 
-    public IReadOnlyList<string> Env { get; init; } = [];
+    public IReadOnlyList<string> Env { get; set; } = [];
 
-    public string User { get; init; } = "";
+    public string User { get; set; } = "";
 
-    public string WorkingDir { get; init; } = "";
+    public string WorkingDir { get; set; } = "";
 
-    public IReadOnlyList<ShimMount> Mounts { get; init; } = [];
+    public IReadOnlyList<ShimMount> Mounts { get; set; } = [];
 }
 
 /// <summary>
@@ -73,16 +73,17 @@ internal sealed class ShimState
 
     private static readonly JsonSerializerOptions Options = new()
     {
+        TypeInfoResolver = WireJsonContext.Default,
         WriteIndented = true,
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     };
 
     private readonly Lock _gate = new();
 
-    public Dictionary<string, ShimContainer> Containers { get; init; } = new(StringComparer.Ordinal);
+    public Dictionary<string, ShimContainer> Containers { get; set; } = new(StringComparer.Ordinal);
 
     /// <summary>Volumes by name, each carrying the labels it was created with. Nothing is stored behind one.</summary>
-    public Dictionary<string, Dictionary<string, string>> Volumes { get; init; } = new(StringComparer.Ordinal);
+    public Dictionary<string, Dictionary<string, string>> Volumes { get; set; } = new(StringComparer.Ordinal);
 
     public static string Location => Path.Combine(HostConfig.Directory, FileName);
 
@@ -91,7 +92,7 @@ internal sealed class ShimState
         try
         {
             return File.Exists(Location)
-                ? JsonSerializer.Deserialize<ShimState>(File.ReadAllText(Location), Options) ?? new ShimState()
+                ? WireJson.Deserialize<ShimState>(File.ReadAllText(Location), Options) ?? new ShimState()
                 : new ShimState();
         }
         catch (JsonException)
@@ -107,7 +108,7 @@ internal sealed class ShimState
         lock (_gate)
         {
             Directory.CreateDirectory(HostConfig.Directory);
-            File.WriteAllText(Location, JsonSerializer.Serialize(this, Options));
+            File.WriteAllText(Location, WireJson.Serialize(this, Options));
         }
     }
 

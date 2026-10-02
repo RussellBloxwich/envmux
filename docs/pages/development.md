@@ -112,6 +112,28 @@ shadowing a real install is a debugging session nobody enjoys. `--uninstall`
 removes it, `--debug` (or `-Configuration Debug`) installs a build with usable
 stack traces.
 
+## Native beta archives
+
+`scripts/release-build.ps1 -Version <version> -Rid <rid>` builds Native AOT
+archives without installing anything. The beta workflow runs this on Windows
+x64, Linux x64 and ARM64, and macOS ARM64. It enables trimming and size
+optimization, strips symbols, and embeds the portal and local skills.
+Build on the target operating system and architecture with .NET 10, Node 24
+and a native compiler: Visual Studio C++ tools on Windows, clang and zlib
+headers on Linux, or Xcode command-line tools on macOS.
+
+`scripts/release-check.ps1 -Archive <path> -Version <version>` checks the
+checksum, extracted executable, project initialization with both skills,
+configuration commands and dry-run. Add `-Docker` on a prepared development
+machine to exercise the extracted native binary through the browser relay,
+portal and chef/chat fixtures. `builds.json` records native compilation and
+binary/archive sizes alongside the source commit and tool versions.
+
+SDK builds stay managed for development and xunit. AOT and trimming analyzers
+remain enabled, and production JSON contracts use source-generated metadata
+with reflection disabled. New wire models belong in `WireJsonContext`; ad hoc
+responses name their fields explicitly through `WireJson.Object`.
+
 ## Installing what a release actually ships
 
 ```console
@@ -122,9 +144,8 @@ $ envmux --version
 
 The legacy local publish helper builds — self-contained, single file, compressed,
 stamped with the UTC minute — for this machine's platform, installed to
-`~/.envmux/bin` as **`envmux`**. Every flag is copied from
-[`ci.yml`](https://github.com/envmux/envmux/blob/main/.github/workflows/ci.yml)
-so the two are identical rather than merely similar.
+`~/.envmux/bin` as **`envmux`**. This helper retains the older managed publish mode; use the native beta archive
+scripts above to verify what the beta release ships.
 
 Use it for the last check before a release, where `dev-install` is wrong for two
 reasons: a global tool runs on the SDK that is already on the machine, so it

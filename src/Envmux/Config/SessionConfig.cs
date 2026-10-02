@@ -236,6 +236,7 @@ internal sealed record SessionConfig
     /// </summary>
     internal static readonly JsonSerializerOptions JsonOptions = new()
     {
+        TypeInfoResolver = WireJsonContext.Default,
         PropertyNameCaseInsensitive = true,
         ReadCommentHandling = JsonCommentHandling.Skip,
         AllowTrailingCommas = true,
@@ -264,7 +265,7 @@ internal sealed record SessionConfig
 
         try
         {
-            return JsonSerializer.Deserialize<SessionConfig>(File.ReadAllText(path), JsonOptions)
+            return WireJson.Deserialize<SessionConfig>(File.ReadAllText(path), JsonOptions)
                    ?? new SessionConfig();
         }
         catch (JsonException e)

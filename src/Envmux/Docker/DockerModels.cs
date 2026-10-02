@@ -8,6 +8,7 @@ internal static class DockerJson
 {
     public static readonly JsonSerializerOptions Options = new()
     {
+        TypeInfoResolver = WireJsonContext.Default,
         PropertyNameCaseInsensitive = true,
         DefaultIgnoreCondition = JsonIgnoreCondition.Never,
     };
@@ -16,61 +17,61 @@ internal static class DockerJson
 /// <summary>The body of <c>POST /containers/create</c>, the parts that matter.</summary>
 internal sealed record ContainerCreateRequest
 {
-    public string Image { get; init; } = "";
+    public string Image { get; set; } = "";
 
-    public Dictionary<string, string>? Labels { get; init; }
+    public Dictionary<string, string>? Labels { get; set; }
 
-    public IReadOnlyList<string>? Cmd { get; init; }
+    public IReadOnlyList<string>? Cmd { get; set; }
 
-    public IReadOnlyList<string>? Entrypoint { get; init; }
+    public IReadOnlyList<string>? Entrypoint { get; set; }
 
-    public IReadOnlyList<string>? Env { get; init; }
+    public IReadOnlyList<string>? Env { get; set; }
 
-    public string? User { get; init; }
+    public string? User { get; set; }
 
-    public string? WorkingDir { get; init; }
+    public string? WorkingDir { get; set; }
 
-    public HostConfigRequest? HostConfig { get; init; }
+    public HostConfigRequest? HostConfig { get; set; }
 }
 
 internal sealed record HostConfigRequest
 {
-    public IReadOnlyList<MountRequest>? Mounts { get; init; }
+    public IReadOnlyList<MountRequest>? Mounts { get; set; }
 
     /// <summary><c>host:container[:options]</c>, the older spelling of a bind.</summary>
-    public IReadOnlyList<string>? Binds { get; init; }
+    public IReadOnlyList<string>? Binds { get; set; }
 }
 
 internal sealed record MountRequest
 {
-    public string Type { get; init; } = "bind";
+    public string Type { get; set; } = "bind";
 
-    public string Source { get; init; } = "";
+    public string Source { get; set; } = "";
 
-    public string Target { get; init; } = "";
+    public string Target { get; set; } = "";
 
-    public bool ReadOnly { get; init; }
+    public bool ReadOnly { get; set; }
 }
 
 /// <summary>The body of <c>POST /containers/{id}/exec</c>.</summary>
 internal sealed record ExecCreateRequest
 {
-    public bool AttachStdin { get; init; }
+    public bool AttachStdin { get; set; }
 
-    public bool AttachStdout { get; init; }
+    public bool AttachStdout { get; set; }
 
-    public bool AttachStderr { get; init; }
+    public bool AttachStderr { get; set; }
 
-    public bool Tty { get; init; }
+    public bool Tty { get; set; }
 
-    public IReadOnlyList<string> Cmd { get; init; } = [];
+    public IReadOnlyList<string> Cmd { get; set; } = [];
 
     /// <summary><c>KEY=value</c> pairs, Docker's spelling.</summary>
-    public IReadOnlyList<string>? Env { get; init; }
+    public IReadOnlyList<string>? Env { get; set; }
 
-    public string? User { get; init; }
+    public string? User { get; set; }
 
-    public string? WorkingDir { get; init; }
+    public string? WorkingDir { get; set; }
 
     /// <summary>The environment as a map, which is what Incus takes.</summary>
     public IReadOnlyDictionary<string, string> Environment()
@@ -90,17 +91,17 @@ internal sealed record ExecCreateRequest
 /// <summary>The body of <c>POST /exec/{id}/start</c>.</summary>
 internal sealed record ExecStartRequest
 {
-    public bool Detach { get; init; }
+    public bool Detach { get; set; }
 
-    public bool Tty { get; init; }
+    public bool Tty { get; set; }
 }
 
 /// <summary>The body of <c>POST /volumes/create</c>.</summary>
 internal sealed record VolumeCreateRequest
 {
-    public string? Name { get; init; }
+    public string? Name { get; set; }
 
-    public Dictionary<string, string>? Labels { get; init; }
+    public Dictionary<string, string>? Labels { get; set; }
 }
 
 /// <summary>

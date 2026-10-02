@@ -138,7 +138,7 @@ internal sealed class DockerShim
 
         return new Dictionary<string, object>(StringComparer.Ordinal)
         {
-            ["Platform"] = new { Name = "envmux (Incus)" },
+            ["Platform"] = WireJson.Object(DockerJson.Options, ("Name", "envmux (Incus)")),
             ["Version"] = EngineVersion,
             ["ApiVersion"] = ApiVersion,
             ["MinAPIVersion"] = "1.24",
@@ -154,7 +154,7 @@ internal sealed class DockerShim
             ["Experimental"] = false,
             ["Components"] = new[]
             {
-                new { Name = "Engine", Version = EngineVersion, Details = details },
+                WireJson.Object(DockerJson.Options, ("Name", "Engine"), ("Version", EngineVersion), ("Details", details)),
             },
         };
     }
@@ -207,9 +207,9 @@ internal sealed class DockerShim
             // of well-formed progress lines, not an empty body (§4.2).
             var name = request["fromImage"];
             await response.StartStreamAsync(200, "application/json", ct).ConfigureAwait(false);
-            await WriteJsonLineAsync(response, new { status = $"Pulling from envmux/{name}", id = "latest" }, ct).ConfigureAwait(false);
-            await WriteJsonLineAsync(response, new { status = $"Every image is the golden snapshot {Golden.Source}" }, ct).ConfigureAwait(false);
-            await WriteJsonLineAsync(response, new { status = $"Status: Image is up to date for {name}" }, ct).ConfigureAwait(false);
+            await WriteJsonLineAsync(response, WireJson.Object(DockerJson.Options, ("status", $"Pulling from envmux/{name}"), ("id", "latest")), ct).ConfigureAwait(false);
+            await WriteJsonLineAsync(response, WireJson.Object(DockerJson.Options, ("status", $"Every image is the golden snapshot {Golden.Source}")), ct).ConfigureAwait(false);
+            await WriteJsonLineAsync(response, WireJson.Object(DockerJson.Options, ("status", $"Status: Image is up to date for {name}")), ct).ConfigureAwait(false);
             await response.EndStreamAsync(ct).ConfigureAwait(false);
             return;
         }
@@ -240,7 +240,7 @@ internal sealed class DockerShim
             ["WorkingDir"] = "",
             ["Labels"] = new Dictionary<string, string>(StringComparer.Ordinal),
         },
-        ["RootFS"] = new { Type = "layers", Layers = new[] { "sha256:" + Sha256(Golden.Source) } },
+        ["RootFS"] = WireJson.Object(DockerJson.Options, ("Type", "layers"), ("Layers", new[] { "sha256:" + Sha256(Golden.Source) })),
     };
 
     // -- volumes -------------------------------------------------------------
@@ -257,7 +257,7 @@ internal sealed class DockerShim
                 volumes = [.. _state.Volumes.Select(v => Volume(v.Key, v.Value))];
             }
 
-            await response.JsonAsync(new { Volumes = volumes, Warnings = Array.Empty<string>() }, ct).ConfigureAwait(false);
+            await response.JsonAsync(WireJson.Object(DockerJson.Options, ("Volumes", volumes), ("Warnings", Array.Empty<string>())), ct).ConfigureAwait(false);
             return;
         }
 
@@ -371,7 +371,7 @@ internal sealed class DockerShim
             ["from"] = container.Image,
             ["Type"] = "container",
             ["Action"] = action,
-            ["Actor"] = new { ID = container.Id, Attributes = attributes },
+            ["Actor"] = WireJson.Object(DockerJson.Options, ("ID", container.Id), ("Attributes", attributes)),
             ["scope"] = "local",
             ["time"] = now.ToUnixTimeSeconds(),
             ["timeNano"] = now.ToUnixTimeMilliseconds() * 1_000_000,
@@ -487,7 +487,7 @@ internal sealed class DockerShim
                 return;
 
             case "top":
-                await response.JsonAsync(new { Titles = TopTitles, Processes = TopProcesses }, ct).ConfigureAwait(false);
+                await response.JsonAsync(WireJson.Object(DockerJson.Options, ("Titles", TopTitles), ("Processes", TopProcesses)), ct).ConfigureAwait(false);
                 return;
 
             default:
@@ -579,7 +579,7 @@ internal sealed class DockerShim
 
         _state.Put(container);
         Emit("create", container);
-        await response.JsonAsync(new { Id = id, Warnings = Array.Empty<string>() }, 201, ct).ConfigureAwait(false);
+        await response.JsonAsync(WireJson.Object(DockerJson.Options, ("Id", id), ("Warnings", Array.Empty<string>())), 201, ct).ConfigureAwait(false);
     }
 
     private static List<ShimMount> Mounts(HostConfigRequest? hostConfig)
@@ -675,7 +675,7 @@ internal sealed class DockerShim
             return;
         }
 
-        await response.JsonAsync(new { StatusCode = 0 }, ct).ConfigureAwait(false);
+        await response.JsonAsync(WireJson.Object(DockerJson.Options, ("StatusCode", 0)), ct).ConfigureAwait(false);
     }
 
     // -- attach --------------------------------------------------------------
@@ -777,8 +777,8 @@ internal sealed class DockerShim
             _execs[id] = new PendingExec(container.Instance, body);
         }
 
-        _log($"exec create {id[..8]} tty={body.Tty} cmd={JsonSerializer.Serialize(body.Cmd)}");
-        await response.JsonAsync(new { Id = id }, 201, ct).ConfigureAwait(false);
+        _log($"exec create {id[..8]} tty={body.Tty} cmd={WireJson.Serialize(body.Cmd)}");
+        await response.JsonAsync(WireJson.Object(DockerJson.Options, ("Id", id)), 201, ct).ConfigureAwait(false);
     }
 
     private async Task ExecAsync(ShimRequest request, ShimResponse response, IShimConnection connection, CancellationToken ct)
@@ -808,13 +808,11 @@ internal sealed class DockerShim
                     ["ID"] = id,
                     ["Running"] = pending.Running,
                     ["ExitCode"] = pending.ExitCode,
-                    ["ProcessConfig"] = new
-                    {
-                        tty = pending.Request.Tty,
-                        entrypoint = pending.Request.Cmd.Count > 0 ? pending.Request.Cmd[0] : "",
-                        arguments = pending.Request.Cmd.Skip(1).ToArray(),
-                        user = pending.Request.User ?? "",
-                    },
+                    ["ProcessConfig"] = WireJson.Object(DockerJson.Options,
+                        ("tty", pending.Request.Tty),
+                        ("entrypoint", pending.Request.Cmd.Count > 0 ? pending.Request.Cmd[0] : ""),
+                        ("arguments", pending.Request.Cmd.Skip(1).ToArray()),
+                        ("user", pending.Request.User ?? "")),
                     ["OpenStdin"] = pending.Request.AttachStdin,
                     ["OpenStdout"] = true,
                     ["OpenStderr"] = true,
@@ -982,7 +980,7 @@ internal sealed class DockerShim
             ["linkTarget"] = "",
         };
 
-        return Convert.ToBase64String(JsonSerializer.SerializeToUtf8Bytes(stat, DockerJson.Options));
+        return Convert.ToBase64String(WireJson.SerializeToUtf8Bytes(stat, DockerJson.Options));
     }
 
     private async Task StreamTarOutAsync(string instance, string path, ShimResponse response, CancellationToken ct)
@@ -1101,8 +1099,8 @@ internal sealed class DockerShim
             {
                 ["NetworkMode"] = "bridge",
                 ["Binds"] = Array.Empty<string>(),
-                ["Mounts"] = container.Mounts.Select(m => new { m.Type, Source = m.Source, Target = m.Destination }).ToArray(),
-                ["RestartPolicy"] = new { Name = "no", MaximumRetryCount = 0 },
+                ["Mounts"] = container.Mounts.Select(m => WireJson.Object(DockerJson.Options, ("Type", m.Type), ("Source", m.Source), ("Target", m.Destination))).ToArray(),
+                ["RestartPolicy"] = WireJson.Object(DockerJson.Options, ("Name", "no"), ("MaximumRetryCount", 0)),
                 ["Privileged"] = false,
                 ["Runtime"] = "runc",
             },
@@ -1136,7 +1134,7 @@ internal sealed class DockerShim
                 ["Ports"] = new Dictionary<string, object?>(StringComparer.Ordinal),
                 ["Networks"] = new Dictionary<string, object?>(StringComparer.Ordinal)
                 {
-                    ["bridge"] = new { IPAddress = address, IPPrefixLen = _host.Range.PrefixLength, Gateway = gateway, MacAddress = mac, NetworkID = _host.Network },
+                    ["bridge"] = WireJson.Object(DockerJson.Options, ("IPAddress", address), ("IPPrefixLen", _host.Range.PrefixLength), ("Gateway", gateway), ("MacAddress", mac), ("NetworkID", _host.Network)),
                 },
             },
         };
@@ -1154,8 +1152,8 @@ internal sealed class DockerShim
         ["Labels"] = container.Labels,
         ["State"] = running ? "running" : "exited",
         ["Status"] = running ? "Up" : "Exited (0)",
-        ["HostConfig"] = new { NetworkMode = "bridge" },
-        ["Mounts"] = container.Mounts.Select(m => new { m.Type, Source = m.Source, Destination = m.Destination }).ToArray(),
+        ["HostConfig"] = WireJson.Object(DockerJson.Options, ("NetworkMode", "bridge")),
+        ["Mounts"] = container.Mounts.Select(m => WireJson.Object(DockerJson.Options, ("Type", m.Type), ("Source", m.Source), ("Destination", m.Destination))).ToArray(),
     };
 
     // -- instance ↔ container -----------------------------------------------
@@ -1253,7 +1251,7 @@ internal sealed class DockerShim
     {
         try
         {
-            var bytes = JsonSerializer.SerializeToUtf8Bytes(value, DockerJson.Options);
+            var bytes = WireJson.SerializeToUtf8Bytes(value, DockerJson.Options);
             var line = new byte[bytes.Length + 1];
             bytes.CopyTo(line, 0);
             line[^1] = (byte)'\n';

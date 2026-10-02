@@ -37,8 +37,8 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Portal build failed' }
     & dotnet publish src/Envmux/Envmux.csproj --configuration Release --runtime $Rid --self-contained true `
         -p:BuildPortal=true -p:Version=$Version -p:InformationalVersion=$Version `
-        -p:IncludeSourceRevisionInInformationalVersion=false -p:EnableCompressionInSingleFile=true `
-        -p:DebugType=none --output $published --nologo
+        -p:IncludeSourceRevisionInInformationalVersion=false -p:PublishAot=true -p:PublishSingleFile=false `
+        -p:OptimizationPreference=Size -p:StripSymbols=true -p:DebugType=none --output $published --nologo
     if ($LASTEXITCODE -ne 0) { throw 'Publish failed' }
     $binaryName = if ($Rid.StartsWith('win-', [StringComparison]::Ordinal)) { 'envmux.exe' } else { 'envmux' }
     if (-not (Test-Path -LiteralPath (Join-Path $published $binaryName))) { throw 'Publish produced no executable' }
@@ -68,6 +68,7 @@ try {
     $dirty = @(& git status --porcelain).Count -gt 0
     [IO.File]::WriteAllText((Join-Path $dist 'build.json'), (@{
         version = $Version; rid = $Rid; commit = $commit; dirty = $dirty
+        nativeAot = $true; binaryBytes = (Get-Item -LiteralPath (Join-Path $stage $binaryName)).Length; archiveBytes = (Get-Item -LiteralPath $archive).Length
         sdk = $sdk; node = $nodeVersion; builtUtc = [DateTime]::UtcNow.ToString('O', [Globalization.CultureInfo]::InvariantCulture)
     } | ConvertTo-Json), [Text.UTF8Encoding]::new($false))
     Write-Host "Candidate built: $dist"

@@ -46,6 +46,7 @@ internal static class Seed
 
     private static readonly JsonSerializerOptions Options = new()
     {
+        TypeInfoResolver = WireJsonContext.Default,
         // The seed structs are Go, and Go's tags are snake case. Dictionary
         // keys are deliberately left alone: `core.https_address` and
         // `ipv4.dhcp.ranges` are Incus config keys, not property names, and a
@@ -351,7 +352,7 @@ internal static class Seed
     }
 
     private static string Write<T>(T document) =>
-        JsonSerializer.Serialize(document, Options) + "\n";
+        WireJson.Serialize(document, Options) + "\n";
 
     /// <summary>A one-line summary of what a seed will do, for the console.</summary>
     public static IEnumerable<string> Describe(HostConfig config)

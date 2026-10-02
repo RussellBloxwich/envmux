@@ -240,7 +240,7 @@ internal sealed class IncusApi(IncusClient client)
         string name,
         IReadOnlyDictionary<string, string> config,
         CancellationToken ct = default) =>
-        DoAsync(client.PutAsync($"{IncusClient.V1}/networks/{name}", new { config }, ct), null, ct);
+        DoAsync(client.PutAsync($"{IncusClient.V1}/networks/{name}", WireJson.Object(Incus.IncusJson.Options, ("config", config)), ct), null, ct);
 
     /// <summary>
     /// Create a network — the <c>envmux0</c> bridge, on a daemon that has none.

@@ -27,19 +27,19 @@ internal sealed record IncusOsFile(
 internal sealed record IncusOsUpdate
 {
     /// <summary>A timestamp — <c>202608201218</c> — which sorts chronologically as a string.</summary>
-    public string Version { get; init; } = "";
+    public string Version { get; set; } = "";
 
     /// <summary>"stable", "testing", or both.</summary>
-    public IReadOnlyList<string> Channels { get; init; } = [];
+    public IReadOnlyList<string> Channels { get; set; } = [];
 
-    public string Severity { get; init; } = "";
+    public string Severity { get; set; } = "";
 
-    public string PublishedAt { get; init; } = "";
+    public string PublishedAt { get; set; } = "";
 
     /// <summary>The build's own directory, relative to the index — <c>/202608201218</c>.</summary>
-    public string Url { get; init; } = "";
+    public string Url { get; set; } = "";
 
-    public IReadOnlyList<IncusOsFile> Files { get; init; } = [];
+    public IReadOnlyList<IncusOsFile> Files { get; set; } = [];
 
     public bool InChannel(string channel) =>
         Channels.Contains(channel, StringComparer.OrdinalIgnoreCase);
@@ -104,6 +104,7 @@ internal static class IncusOsIndex
 
     private static readonly JsonSerializerOptions Options = new()
     {
+        TypeInfoResolver = WireJsonContext.Default,
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
         PropertyNameCaseInsensitive = true,
     };
@@ -142,7 +143,7 @@ internal static class IncusOsIndex
 
         try
         {
-            var index = JsonSerializer.Deserialize<Index>(json, Options);
+            var index = WireJson.Deserialize<Index>(json, Options);
 
             return index?.Updates ?? throw new ImageIndexException("the image index is empty");
         }
@@ -187,10 +188,10 @@ internal static class IncusOsIndex
     /// <summary>What the local copy of a build is called, once it is unpacked.</summary>
     public static string LocalName(IncusOsUpdate update) => $"IncusOS_{update.Version}.img";
 
-    private sealed record Index
+    internal sealed record Index
     {
-        public string Format { get; init; } = "";
+        public string Format { get; set; } = "";
 
-        public IReadOnlyList<IncusOsUpdate> Updates { get; init; } = [];
+        public IReadOnlyList<IncusOsUpdate> Updates { get; set; } = [];
     }
 }

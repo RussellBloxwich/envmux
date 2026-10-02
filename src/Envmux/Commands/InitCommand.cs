@@ -152,12 +152,12 @@ internal static class InitCommand
         if (toolchain is not null)
         {
             json.AppendLine(
-                $"    \"toolchain\": {{ \"command\": {JsonSerializer.Serialize(toolchain)}, \"kind\": \"once\" }},");
+                $"    \"toolchain\": {{ \"command\": {WireJson.Serialize(toolchain)}, \"kind\": \"once\" }},");
         }
 
         if (install is not null)
         {
-            json.Append($"    \"install\": {{ \"command\": {JsonSerializer.Serialize(install)}, \"kind\": \"once\"");
+            json.Append($"    \"install\": {{ \"command\": {WireJson.Serialize(install)}, \"kind\": \"once\"");
             json.AppendLine(toolchain is null ? " }" : ", \"dependsOn\": \"toolchain\" }");
         }
 
@@ -230,7 +230,7 @@ internal static class InitCommand
         return json.ToString();
 
         static string Line(string key, string value) =>
-            $"  \"{key}\": {JsonSerializer.Serialize(value)}";
+            $"  \"{key}\": {WireJson.Serialize(value)}";
     }
 
     /// <summary>

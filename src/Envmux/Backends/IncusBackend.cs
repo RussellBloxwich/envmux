@@ -182,7 +182,7 @@ internal sealed class IncusBackend : IBackend
 
             if (config.Count > 0)
             {
-                await api.Client.PatchAsync($"{IncusClient.V1}/instances/{name}", new { config }, ct)
+                await api.Client.PatchAsync($"{IncusClient.V1}/instances/{name}", WireJson.Object(Incus.IncusJson.Options, ("config", config)), ct)
                     .ConfigureAwait(false);
             }
         }
