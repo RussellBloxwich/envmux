@@ -274,6 +274,7 @@ internal sealed class PortalHost(Session.Session session, RoomFeed room) : IDisp
         api.MapPost("/editor", EditorAsync);
         api.MapPost("/browser", BrowserAsync);
         api.MapGet("/shell", ShellAsync);
+        api.MapPost("/shell/close", CloseShellAsync);
 
         // The control plane for remote agents. The same files `envmux agent`
         // reads and writes, so the command line and this page agree without a
@@ -1155,11 +1156,10 @@ internal sealed class PortalHost(Session.Session session, RoomFeed room) : IDisp
     /// actually there rather than for the default 80×24.
     /// </para>
     /// <para>
-    /// It attaches to a multiplexer session named for the session and the tool,
-    /// which is why closing the tab no longer ends what was in it. Open the tab
-    /// again and the same shell is there, mid-command, with its scrollback. Two
-    /// tabs at once mirror each other, which is what attaching twice to a
-    /// multiplexer has always done and is not worth pretending otherwise about.
+    /// It attaches to a multiplexer session named for the session, tool and
+    /// optional terminal identity. A client supplies <c>?terminal=</c> for each
+    /// independent tab and reuses that identity when reconnecting. Clients
+    /// without an identity retain the original shared terminal behavior.
     /// </para>
     /// <para>
     /// <c>?tool=</c> opens one of the session's carried coding tools instead of
@@ -1171,11 +1171,18 @@ internal sealed class PortalHost(Session.Session session, RoomFeed room) : IDisp
     /// those is worth having on a socket.
     /// </para>
     /// </remarks>
-    private async Task ShellAsync(HttpContext context, int? cols, int? rows, string? tool)
+    private async Task ShellAsync(HttpContext context, int? cols, int? rows, string? tool, string? terminal)
     {
         if (!context.WebSockets.IsWebSocketRequest)
         {
             await ProblemAsync(context, StatusCodes.Status400BadRequest, "a shell is a websocket").ConfigureAwait(false);
+            return;
+        }
+
+        if (terminal is not null && (string.IsNullOrWhiteSpace(terminal) || terminal.Length > 128))
+        {
+            await ProblemAsync(context, StatusCodes.Status400BadRequest,
+                "terminal identity must contain 1–128 characters").ConfigureAwait(false);
             return;
         }
 
@@ -1207,7 +1214,7 @@ internal sealed class PortalHost(Session.Session session, RoomFeed room) : IDisp
             return;
         }
 
-        var latch = Latch.Id(plan.Project, plan.Session, tool is { Length: > 0 } ? $"tool-{tool}" : "web");
+        var latch = PortalTerminal.LatchId(plan.Project, plan.Session, tool, terminal);
 
         // A tool is run through a login shell so that it is found the way a
         // person's own shell would find it — nvm, asdf, a ~/.local/bin that
@@ -1252,6 +1259,63 @@ internal sealed class PortalHost(Session.Session session, RoomFeed room) : IDisp
         await using (exec)
         {
             await PortalShell.PumpAsync(socket, exec, context.RequestAborted).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>End an explicitly identified terminal; a dropped socket only detaches.</summary>
+    private async Task CloseShellAsync(HttpContext context, string? terminal, string? tool)
+    {
+        if (terminal is null || string.IsNullOrWhiteSpace(terminal) || terminal.Length > 128)
+        {
+            await ProblemAsync(context, StatusCodes.Status400BadRequest,
+                "terminal identity must contain 1–128 characters").ConfigureAwait(false);
+            return;
+        }
+
+        if (session.Address.Length == 0)
+        {
+            await ProblemAsync(context, StatusCodes.Status409Conflict,
+                "there is no instance to close a shell in yet").ConfigureAwait(false);
+            return;
+        }
+
+        // An adopted instance can still hold a tool terminal after its mount
+        // was disabled. Closing it must not require launching the tool again.
+        if (tool is { Length: > 0 } && ToolMount.LaunchCommand(tool) is null)
+        {
+            await ProblemAsync(context, StatusCodes.Status400BadRequest,
+                "the named tool is not an interactive coding tool").ConfigureAwait(false);
+            return;
+        }
+
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(context.RequestAborted);
+        deadline.CancelAfter(TimeSpan.FromSeconds(20));
+        var latch = PortalTerminal.LatchId(session.Plan.Project, session.Plan.Session, tool, terminal);
+        // Exact targets avoid tmux's prefix matching. Closing an already-ended
+        // shell is successful, but a failed exec must keep the tab recoverable.
+        var target = Workspace.Quote("=" + latch);
+        var script = $"tmux has-session -t {target} 2>/dev/null || exit 0; tmux kill-session -t {target}";
+        try
+        {
+            var result = await Command.CaptureAsync(session.Backend.Exec, session.Plan.InstanceName,
+                ["sh", "-c", script], session.ContainerUser, ct: deadline.Token).ConfigureAwait(false);
+            if (!result.Ok)
+            {
+                await ProblemAsync(context, StatusCodes.Status502BadGateway,
+                    "the terminal could not be closed; reconnect or try again").ConfigureAwait(false);
+                return;
+            }
+
+            context.Response.StatusCode = StatusCodes.Status204NoContent;
+        }
+        catch (OperationCanceledException) when (!context.RequestAborted.IsCancellationRequested)
+        {
+            await ProblemAsync(context, StatusCodes.Status504GatewayTimeout,
+                "closing the terminal timed out; reconnect to check its state").ConfigureAwait(false);
+        }
+        catch (Exception e) when (e is Backends.BackendException or IncusException or IOException)
+        {
+            await ProblemAsync(context, StatusCodes.Status502BadGateway, e.Message).ConfigureAwait(false);
         }
     }
 

@@ -126,15 +126,14 @@ export function TaskOutput({ name, active }: { name: string; active: boolean }) 
 /**
  * A shell in the instance, latched — this socket is an attachment to it.
  *
- * Closing the tab ends the shell, because the socket is the shell — there is
- * nothing on the far side holding it open, by design. When one ends, the
- * terminal keeps what it said and offers another: a new socket, a new exec, the
- * same scrollback above it.
+ * Disconnecting detaches from tmux. Reconnecting with the same identity
+ * reattaches to its shell; a new tab has a new identity and its own shell.
+ * App ends the tmux session before closing its tab explicitly.
  *
  * With `tool` named, the shell *is* that tool — the session mounted its state
  * from this machine, so it opens signed in.
  */
-export function Shell({ active, tool }: { active: boolean; tool?: string }) {
+export function Shell({ active, tool, identity, closing }: { active: boolean; tool?: string; identity: string; closing: boolean }) {
   const socket = useRef<WebSocket | null>(null)
   const start = useRef<() => void>(() => {})
   const [closed, setClosed] = useState(false)
@@ -154,7 +153,7 @@ export function Shell({ active, tool }: { active: boolean; tool?: string }) {
     let gone = false
 
     const open = () => {
-      const opening = new WebSocket(shellUrl(terminal.cols, terminal.rows, tool))
+      const opening = new WebSocket(shellUrl(terminal.cols, terminal.rows, tool, identity))
       opening.binaryType = "arraybuffer"
       current = opening
       socket.current = opening
@@ -191,7 +190,7 @@ export function Shell({ active, tool }: { active: boolean; tool?: string }) {
       typed.dispose()
       current?.close()
     }
-  }, [terminal, tool])
+  }, [terminal, tool, identity])
 
   // Focus follows the tab: a shell you have just switched to should take what
   // you type next without a click first.
@@ -203,8 +202,8 @@ export function Shell({ active, tool }: { active: boolean; tool?: string }) {
     <div className={active ? "pane" : "pane hidden"}>
       <div className="terminal" ref={host} />
       {closed && (
-        <button className="again" onClick={() => start.current()}>
-          {tool ? `start ${tool} again here` : "start another shell here"}
+        <button className="again" disabled={closing} onClick={() => start.current()}>
+          {tool ? `reconnect to ${tool}` : "reconnect to shell"}
         </button>
       )}
     </div>

@@ -256,6 +256,14 @@ so and carries on, and the portal then serves a page explaining that this build
 has none. `BuildPortal=false` in the environment skips it even where Node is
 installed.
 
+Run the portal's terminal-tab storage tests with Node 24:
+
+```console
+$ npm --prefix src/Envmux/Portal/ui test
+```
+
+They use Node's built-in test runner and need no backend or additional packages.
+
 Working on the page itself wants Vite's dev server rather than a rebuild per
 keystroke. Start a session with the token turned off — the dev server proxies
 `/api` to it, and cannot be handed a cookie it does not have — and point the

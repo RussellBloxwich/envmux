@@ -16,6 +16,7 @@ import {
   type Task,
 } from "./session"
 import { Shell, TaskOutput } from "./terminal"
+import { restoreShellTabs, saveShellTabs, type ShellTab } from "./tabs"
 
 /**
  * What is in the big pane on the right.
@@ -23,14 +24,14 @@ import { Shell, TaskOutput } from "./terminal"
  * Tabs are opened rather than routed: the log is always there, a task's output
  * appears when you ask to watch it, and a shell appears when you ask for one.
  * Every tab that has been opened stays mounted and is hidden rather than
- * unmounted, because unmounting a shell would end it and unmounting a tail
- * would lose its scrollback.
+ * unmounted, so switching tabs preserves the terminal display and tails keep
+ * their scrollback.
  */
 type Tab =
   | { id: "log"; kind: "log" }
   | { id: "room"; kind: "room" }
   | { id: string; kind: "task"; name: string }
-  | { id: string; kind: "shell"; tool?: string; label: string }
+  | ShellTab
 
 export function App() {
   const { state, connected } = useSession()
@@ -40,6 +41,38 @@ export function App() {
   ])
   const [open, setOpen] = useState("log")
   const [shells, setShells] = useState(0)
+  const [restoredFor, setRestoredFor] = useState<string | null>(null)
+  const [closing, setClosing] = useState<string | null>(null)
+  const [tabError, setTabError] = useState("")
+  const storageKey = state ? `envmux:shells:${state.project}:${state.session}:${state.instanceName}` : null
+
+  useEffect(() => {
+    if (!storageKey || restoredFor === storageKey) return
+    // Accessing sessionStorage itself can throw when browser storage is blocked.
+    let restored: ShellTab[] = []
+    const navigation = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined
+    try {
+      restored = restoreShellTabs(sessionStorage, storageKey, navigation?.type ?? "navigate")
+    } catch {
+      // The storage property itself may be denied before the helper runs.
+    }
+    setTabs([{ id: "log", kind: "log" }, { id: "room", kind: "room" }, ...restored])
+    setShells(restored.reduce((largest, tab) => {
+      const number = Number(tab.label.match(/ (\d+)$/)?.[1] ?? 0)
+      return Number.isSafeInteger(number) ? Math.max(largest, number) : largest
+    }, 0))
+    setOpen("log")
+    setRestoredFor(storageKey)
+  }, [storageKey, restoredFor])
+
+  useEffect(() => {
+    if (!storageKey || restoredFor !== storageKey) return
+    try {
+      saveShellTabs(sessionStorage, storageKey, tabs.filter((tab): tab is ShellTab => tab.kind === "shell"))
+    } catch {
+      // Keep in-page shells usable when browser storage is disabled.
+    }
+  }, [storageKey, restoredFor, tabs])
 
   useEffect(() => {
     document.title = state ? `${state.project} / ${state.session}` : "envmux"
@@ -60,18 +93,37 @@ export function App() {
   }
 
   // Every shell is its own tab, numbered so that three of them are tellable
-  // apart — the server keeps no names, because it keeps nothing at all.
+  // apart. A random identity keeps separate browser pages from sharing a shell.
   const shell = (tool?: string) => {
     const nth = shells + 1
-    const id = `shell:${nth}`
+    const id = `shell:${crypto.randomUUID()}`
     setShells(nth)
     setTabs(current => [...current, { id, kind: "shell", tool, label: `${tool ?? "shell"} ${nth}` }])
     setOpen(id)
   }
 
-  const close = (id: string) => {
-    setTabs(current => current.filter(t => t.id !== id))
-    setOpen(current => (current === id ? "log" : current))
+  const close = async (tab: Tab) => {
+    if (closing) return
+    setTabError("")
+    setClosing(tab.id)
+    try {
+      if (tab.kind === "shell") {
+        const query = new URLSearchParams({ terminal: tab.id })
+        if (tab.tool) query.set("tool", tab.tool)
+        const response = await ask(`/shell/close?${query}`)
+        if (!response.ok) {
+          const answer = (await response.json()) as { error?: string }
+          setTabError(answer.error ?? "could not close the terminal")
+          return
+        }
+      }
+      setTabs(current => current.filter(t => t.id !== tab.id))
+      setOpen(current => (current === tab.id ? "log" : current))
+    } catch {
+      setTabError("close response lost — reconnect to check the terminal before retrying")
+    } finally {
+      setClosing(null)
+    }
   }
 
   return (
@@ -101,7 +153,7 @@ export function App() {
                         : tab.label}
                 </button>
                 {tab.kind !== "log" && tab.kind !== "room" && (
-                  <button className="close" title="close this tab" onClick={() => close(tab.id)}>
+                  <button className="close" title={tab.kind === "shell" ? "end this shell and close its tab" : "close this tab"} disabled={closing !== null} onClick={() => close(tab)}>
                     ×
                   </button>
                 )}
@@ -127,6 +179,8 @@ export function App() {
             ))}
           </nav>
 
+          {tabError && <p role="alert">{tabError}</p>}
+
           {tabs.map(tab =>
             tab.kind === "log" ? (
               <Log key={tab.id} lines={state.log} active={open === tab.id} />
@@ -135,7 +189,7 @@ export function App() {
             ) : tab.kind === "task" ? (
               <TaskOutput key={tab.id} name={tab.name} active={open === tab.id} />
             ) : (
-              <Shell key={tab.id} active={open === tab.id} tool={tab.tool} />
+              <Shell key={tab.id} active={open === tab.id} tool={tab.tool} identity={tab.id} closing={closing === tab.id} />
             ),
           )}
         </main>

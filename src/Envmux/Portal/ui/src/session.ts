@@ -248,8 +248,9 @@ export function usePoll<T>(path: string, every: number, active = true): T | null
  * ones this session actually mounted and execs it, so quitting it ends the
  * shell the way quitting `claude` in a terminal does.
  */
-export function shellUrl(cols: number, rows: number, tool?: string): string {
+export function shellUrl(cols: number, rows: number, tool?: string, terminal?: string): string {
   const scheme = location.protocol === "https:" ? "wss" : "ws"
   const named = tool ? `&tool=${encodeURIComponent(tool)}` : ""
-  return `${scheme}://${location.host}/api/shell?cols=${cols}&rows=${rows}${named}`
+  const identity = terminal ? `&terminal=${encodeURIComponent(terminal)}` : ""
+  return `${scheme}://${location.host}/api/shell?cols=${cols}&rows=${rows}${named}${identity}`
 }

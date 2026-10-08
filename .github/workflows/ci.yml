@@ -43,6 +43,7 @@ jobs:
       - run: dotnet restore
       # Warnings are errors in Directory.Build.props, so this is also the lint.
       - run: dotnet build --no-restore --configuration Release
+      - run: npm --prefix src/Envmux/Portal/ui test
       - run: dotnet test --no-build --configuration Release --verbosity normal --logger trx --results-directory artifacts/ci-tests
         env:
           ENVMUX_DOCKER_LIVE: "0"

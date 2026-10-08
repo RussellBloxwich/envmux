@@ -23,9 +23,12 @@ internal sealed record ToolMount(string Name, string HostPath, string ContainerR
     /// <c>git push</c> is authenticated, and running <c>gh</c> on its own
     /// prints usage and exits, which is not a thing to offer a button for.
     /// </remarks>
-    public string? Launch => Name switch
+    public string? Launch => LaunchCommand(Name);
+
+    /// <summary>The interactive tools, including ones no longer mounted by an adopted session.</summary>
+    public static string? LaunchCommand(string name) => name switch
     {
-        "claude" or "codex" or "gemini" or "opencode" => Name,
+        "claude" or "codex" or "gemini" or "opencode" => name,
         _ => null,
     };
 

@@ -141,17 +141,28 @@ Mounting a tool's state says nothing about whether the *image* has it installed.
 Where it does not, the terminal says so and hands you a shell instead of closing
 a second after it opened.
 
-## Shells last as long as their tab
+## Independent shells and reconnecting
 
-One socket is one shell. Opening a tab creates it, closing the tab ends it, and
-two tabs are two shells because they are two sockets. There is nothing on the
-far side holding one open between connections, by design: envmux is the process
-you are looking at, and a shell that outlived it would outlive the container it
-was in.
+Each portal shell tab has its own tmux session. Closing the connection detaches
+from it; reconnecting from the same tab restores the shell and its running
+command. Refreshing the page restores its shell tabs from this browser tab's
+session storage. If browser storage is blocked, reconnecting still works within
+the page, but a refresh cannot restore its tabs.
 
-When a shell ends — you typed `exit`, or the command in it died — the terminal
-says what it exited with, keeps everything above it, and offers another in the
-same tab.
+Use `exit` or the tab's close button to end a shell. The close button waits for
+the server before removing the tab; an error leaves it available to reconnect.
+Closing the whole browser page detaches its shells, so end unwanted shells
+before leaving. Tab identities are not shared across separate browser tabs.
+
+API clients can supply `terminal` on `/api/shell` alongside `cols`, `rows` and
+`tool`. Reuse that ID to reconnect, or choose a different ID for an independent
+shell. IDs must contain 1–128 characters and cannot be all whitespace. IDs are
+scoped to the project, session and tool; they do not grant access without the
+portal's existing authentication. Clients omitting `terminal` keep the original
+shared shell behavior. `POST /api/shell/close?terminal=<id>` (and the same optional
+`tool`) ends that terminal and returns `204`, including when it has already
+ended. A missing or invalid identity is refused, so this operation cannot close
+the legacy shared terminal. It uses the portal's usual authentication.
 
 ## Turning it off
 

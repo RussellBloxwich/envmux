@@ -515,6 +515,34 @@ public class PortalHttpTests
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("too-long")]
+    public async Task RefusesInvalidTerminalIdentitiesBeforeUpgrading(string identity)
+    {
+        var session = Paper("""{"name":"proj"}""");
+        await using var router = await ServeAsync(session, 45266);
+        using var http = new HttpClient();
+        if (identity == "too-long")
+        {
+            identity = new string('x', 129);
+        }
+
+        using var request = Get(router,
+            $"/api/shell?terminal={Uri.EscapeDataString(identity)}", "127.0.0.1");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", session.Plan.Portal.Token);
+        request.Headers.Connection.Add("Upgrade");
+        request.Headers.Upgrade.Add(new ProductHeaderValue("websocket"));
+        request.Headers.Add("Sec-WebSocket-Version", "13");
+        request.Headers.Add("Sec-WebSocket-Key", Convert.ToBase64String(new byte[16]));
+        using var response = await http.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("terminal identity", await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+    }
+
 }
 
 /// <summary>The one control message the shell socket understands.</summary>
