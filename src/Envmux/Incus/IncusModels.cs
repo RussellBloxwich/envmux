@@ -201,6 +201,10 @@ internal sealed record Instance
 {
     public string Name { get; init; } = "";
 
+    /// <summary>The backend's immutable identity, when it has one beyond the name.</summary>
+    [JsonIgnore]
+    public string? BackendId { get; init; }
+
     public string Status { get; init; } = "";
 
     public int StatusCode { get; init; }

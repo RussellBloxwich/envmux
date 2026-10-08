@@ -165,10 +165,26 @@ function Header({ state, connected }: { state: SessionState; connected: boolean 
     setSaid(answer.error ?? (answer.opened ? `opening a browser at ${answer.url} in the instance…` : "no browser"))
   }
 
+  const [restarting, setRestarting] = useState(false)
+
   const restart = async () => {
+    if (restarting) return
     if (!confirm("Restart the tasks from .envmux.json as it is now?")) return
-    await ask("/restart")
+    setRestarting(true)
     setSaid("restarting…")
+    try {
+      const response = await ask("/restart")
+      if (!response.ok) {
+        const answer = (await response.json()) as { error?: string }
+        setSaid(answer.error ?? "restart failed")
+        return
+      }
+      setSaid("tasks dispatched")
+    } catch {
+      setSaid("restart response lost — check the session state before retrying")
+    } finally {
+      setRestarting(false)
+    }
   }
 
   return (
@@ -217,7 +233,7 @@ function Header({ state, connected }: { state: SessionState; connected: boolean 
         >
           open a browser in the instance
         </button>
-        <button onClick={restart}>restart session</button>
+        <button onClick={restart} disabled={restarting}>restart session</button>
       </div>
     </header>
   )

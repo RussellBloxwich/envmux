@@ -61,6 +61,31 @@ public class PortalHttpTests
         Assert.Equal(HttpStatusCode.Unauthorized, state.StatusCode);
     }
 
+    [Fact]
+    public async Task ARefusedRestartKeepsTheExistingBrowserCredentialValid()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "envmux-restart-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var session = Paper("""{"name":"proj"}""", directory);
+            await using var router = await ServeAsync(session, 45265);
+            using var http = new HttpClient();
+            http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", session.Plan.Portal.Token);
+            await File.WriteAllTextAsync(Path.Combine(directory, ".envmux.json"), """{"name":"proj","portal":{"token":false}}""");
+
+            using var restart = await http.PostAsync($"http://127.0.0.1:{router.Port}/api/restart", null);
+            Assert.Equal(HttpStatusCode.Conflict, restart.StatusCode);
+            Assert.Contains("stopping this session", await restart.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+            using var state = await http.GetAsync($"http://127.0.0.1:{router.Port}/api/state");
+            Assert.Equal(HttpStatusCode.OK, state.StatusCode);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
     /// <summary>
     /// A websocket request is recognised as one.
     /// </summary>

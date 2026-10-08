@@ -173,3 +173,20 @@ on a `PATH` cannot assume it has.
 a working tree without Node still builds, still runs and still routes, and the
 page it cannot serve says exactly that. See
 [Development](development.md#the-portal-page) for working on it.
+
+## Restarting the session
+
+Restart reloads `.envmux.json` and restarts tasks and starts any added services in the retained
+instance. Browser cookies and guest chat credentials remain valid. An exited
+Docker container is resumed by its original ID; a missing or replaced instance
+is refused rather than recreated, preserving the distinction between saved work
+and a new checkout.
+
+Changing the backend, portal authentication, session identity, or working directory
+requires a full stop and start. `POST /api/restart` returns `204` after the
+retained instance is running, service containers have started, and tasks have been dispatched; it
+does not wait for tasks to complete. A refused restart returns `409` with an
+`error` message. Service health and task completion are reported separately by
+configured task dependencies; `204` does not promise that application ports are
+ready. A second restart during restart or teardown is refused, and teardown
+waits for an active restart. Runtime restart failures appear in session state.
